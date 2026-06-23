@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Requerimientos de Intranet</title>
+<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=W5crkUkt7_Ow4drFwYwnBtTycEkukEs4-PXqZGBZZTiPCU7UiNJa-6oqGpSn6xGw8XHicGrsF79o7rFlR50CMsqcqClXuHNg6KgWlosM6jY" charset="UTF-8"></script><script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap"><style>body{font-family:'Inter',sans-serif;background-color:#f3f4f6}.status-card{transition:background-color .5s ease-in-out , border-left-color .5s ease-in-out}.green-status{background-color:#d1fae5;border-left:4px solid #10b981}.yellow-status{background-color:#fef3c7;border-left:4px solid #f59e0b}.red-status{background-color:#fee2e2;border-left:4px solid #ef4444}.completed-status{background-color:#e5e7eb;border-left:4px solid #6b7280;color:#6b7280}.completed-status .completed-text{text-decoration:line-through}.modal{transition:opacity .3s ease-in-out , visibility .3s ease-in-out}.modal.hidden{opacity:0;visibility:hidden}</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<div class="bg-white shadow-xl rounded-lg p-8 w-full max-w-6xl">
+<div class="flex justify-between items-center mb-6">
+<h1 class="text-3xl font-bold text-gray-800 text-center flex-grow">Sistema de Requerimientos</h1>
+<button id="settingsButton" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2h-2a2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2v-2a2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2h2a2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2v2a2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path>
+</svg>
+</button>
+</div>
+<form id="requestForm" class="mb-8 p-6 bg-gray-50 rounded-lg shadow-inner">
+<h2 class="text-2xl font-semibold text-gray-700 mb-4">Crear Nuevo Requerimiento</h2>
+<div class="mb-4">
+<label for="personaAutorizada" class="block text-gray-700 font-medium mb-2">Persona Autorizada</label>
+<select id="personaAutorizada" name="personaAutorizada" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" required>
+<option value="" disabled selected>Selecciona una persona</option>
+<option value="Miguel Angel Aceves">Miguel Angel Aceves</option>
+<option value="Alejandro Duarte">Alejandro Duarte</option>
+<option value="Yessenia Palafox">Yessenia Palafox</option>
+<option value="Juan Carlos Rodrigues">Juan Carlos Rodrigues</option>
+<option value="Alberto Rodriguez">Alberto Rodriguez</option>
+<option value="Victor Calidad">Victor Calidad</option>
+<option value="Ismael Lopez">Ismael Lopez</option>
+<option value="Alejandro Lopez">Alejandro Lopez</option>
+</select>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+<div>
+<label for="codigoPrenda" class="block text-gray-700 font-medium mb-2">Código de Prenda</label>
+<input list="productCodes" type="text" id="codigoPrenda" name="codigoPrenda" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Ej. PAMZCCXAZ5" required>
+<datalist id="productCodes"></datalist>
+</div>
+<div>
+<label for="talla" class="block text-gray-700 font-medium mb-2">Talla</label>
+<input type="text" id="talla" name="talla" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Ej. M, L, 32" required>
+</div>
+</div>
+<div id="codeDescription" class="mb-4 text-center text-sm italic text-gray-500 min-h-[20px]"></div>
+<div class="mb-4">
+<label for="numPedido" class="block text-gray-700 font-medium mb-2">Núm. de Pedido</label>
+<input type="text" id="numPedido" name="numPedido" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Ej. #123456" required>
+</div>
+<div class="mb-4">
+<label for="observaciones" class="block text-gray-700 font-medium mb-2">Observaciones</label>
+<textarea id="observaciones" name="observaciones" rows="3" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200 resize-none" placeholder="Ingresa detalles adicionales..."></textarea>
+</div>
+<button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 ease-in-out transform hover:scale-105">
+Enviar Requerimiento
+</button>
+</form>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div>
+<h2 class="text-2xl font-semibold text-gray-700 mb-4">Requerimientos Pendientes</h2>
+<div id="requestsContainerPending" class="space-y-4">
+<div class="flex items-center justify-center text-gray-500 p-4" id="noRequestsMessagePending">
+No hay requerimientos pendientes.
+</div>
+</div>
+</div>
+<div>
+<h2 class="text-2xl font-semibold text-gray-700 mb-4 flex justify-between items-center">
+Requerimientos Finalizados
+<button id="exportButton" class="text-gray-400 hover:text-gray-600 transition-colors duration-200" title="Exportar a CSV">
+<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+<polyline points="7 10 12 15 17 10"></polyline>
+<line x1="12" y1="15" x2="12" y2="3"></line>
+</svg>
+</button>
+</h2>
+<div id="requestsContainerCompleted" class="space-y-4">
+<div class="flex items-center justify-center text-gray-500 p-4" id="noRequestsMessageCompleted">
+No hay requerimientos completados.
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="completionModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+<h3 class="text-xl font-bold text-gray-800 mb-4">Completar Requerimiento</h3>
+<p class="text-gray-700 mb-4">Ingresa el número de caja y comentarios para este requerimiento.</p>
+<input type="text" id="cajaNumeroInput" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 mb-4" placeholder="Número de Caja" required>
+<textarea id="comentariosEntregaInput" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500" placeholder="Comentarios de entrega (opcional)"></textarea>
+<div class="flex justify-end space-x-4 mt-6">
+<button id="cancelCompletionButton" class="px-4 py-2 text-gray-700 font-bold rounded-md hover:bg-gray-200 transition-colors duration-200">Cancelar</button>
+<button id="confirmCompletionButton" class="px-4 py-2 bg-green-600 text-white font-bold rounded-md hover:bg-green-700 transition-colors duration-200">Confirmar</button>
+</div>
+</div>
+</div>
+<div id="settingsModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-auto">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-2xl font-bold text-gray-800">Gestionar Sistema</h3>
+<button id="closeSettingsModal" class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+</svg>
+</button>
+</div>
+<div class="mb-8">
+<h4 class="text-xl font-semibold text-gray-700 mb-2">Agregar Código de Prenda</h4>
+<form id="addCodeForm" class="space-y-4">
+<div>
+<label for="newCode" class="block text-gray-700 font-medium mb-2">Código de Prenda</label>
+<input type="text" id="newCode" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Nuevo Código" required>
+</div>
+<div>
+<label for="newDescription" class="block text-gray-700 font-medium mb-2">Descripción</label>
+<input type="text" id="newDescription" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Descripción de la prenda" required>
+</div>
+<button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 ease-in-out transform hover:scale-105">
+Agregar Código
+</button>
+<p id="addCodeMessage" class="text-green-600 font-medium text-center hidden">Código agregado con éxito.</p>
+</form>
+</div>
+<div>
+<h4 class="text-xl font-semibold text-gray-700 mb-2">Agregar Usuario Autorizado</h4>
+<form id="addUserForm" class="space-y-4">
+<div>
+<label for="newUser" class="block text-gray-700 font-medium mb-2">Nombre del Usuario</label>
+<input type="text" id="newUser" class="w-full p-3 rounded-md border-2 border-gray-300 focus:outline-none focus:border-indigo-500 transition duration-200" placeholder="Nuevo Usuario" required>
+</div>
+<button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md transition duration-200 ease-in-out transform hover:scale-105">
+Agregar Usuario
+</button>
+<p id="addUserMessage" class="text-green-600 font-medium text-center hidden">Usuario agregado con éxito.</p>
+</form>
+<div id="existingUsersList" class="mt-6 border-t pt-4">
+<h4 class="font-semibold text-gray-700 mb-2">Usuarios Autorizados:</h4>
+<ul id="authorizedUsersUl" class="list-disc list-inside space-y-1 text-gray-600 max-h-32 overflow-y-auto">
+</ul>
+</div>
+</div>
+</div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // CSV Data con códigos de productos
+      const csvData = `CODIGO,DESCRIPCION
+PAMZCCXAZ5,PANTALON AIRMAN MEZCLILLA 14.5 OZ CABALLERO AZUL STONE
+CAGABCLBO0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA BLANCO
+CAMZ7CLAZ5,CAMISA AIRMAN MEZCLILLA 7.5 OZ CABALLERO MANGA LARGA AZUL STONE
+CAOXDCLAZ1,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA AZUL FRANCIA
+PAMZCDXAZ5,PANTALON AIRMAN MEZCLILLA SPANDEX DAMA AZUL STONE
+CAGABCLBO1,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA BLANCO OPTICO
+POCRWCCBO0,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA BLANCO
+POFORCCBO0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA BLANCO
+POCRWCCGR1,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA GRIS JASPE (LINEA)
+PODRYCCBO0,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA BLANCO
+CAOXDCLAZ2,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA AZUL PIZARRA
+CAMCCCLAZ7,CAMISA AIRMAN MICRO CUADRO CABALLERO MANGA LARGA AZUL
+CAJACCLLV0,CAMISA AIRMAN JACKY CABALLERO MANGA LARGA LAVANDA
+CAGABCLAZ1,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA AZUL FRANCIA
+PODRYCCGR0,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA GRIS
+CAGABCLRO1,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA ROJO OSCURO
+PODRYCCAZ4,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA AZUL MARINO
+POFORDCBO0,POLO AIRMAN FORCEONE DAMA MANGA CORTA BLANCO
+CAGABCLGR0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA GRIS
+CAGABCLNE0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA NEGRO
+POCRWCCAZ4,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA AZUL MARINO
+POFORCCAZ4,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA AZUL MARINO
+CAMCRCLAZ7,CAMISA AIRMAN MICRO RAYA CABALLERO MANGA LARGA AZUL
+CAGABCCBO0,CAMISA AIRMAN GABARDINA CABALLERO MANGA CORTA BLANCO
+CAOXDCLBO0,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA BLANCO
+POFORCCGR1,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA GRIS JASPE (LINEA)
+BLGABDLBO0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA BLANCO
+PAGSTCXAZ4,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT CABALLERO AZUL MARINO
+CARYACLBO0,CAMISA AIRMAN EJECUTIVA RAYA CABALLERO MANGA LARGA BLANCO
+POSEADCBO0,POLO AIRMAN SEAL DAMA MANGA CORTA BLANCO
+PAGSTDXAZ4,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT DAMA AZUL MARINO
+PAMCNCXAZ5,PANTALON AIRMAN MEZCLILLA 14.5 OZ CABALLERO AZUL STONE CON CINTA HI-VIS NARANJA
+BLRYADLBO0,BLUSA AIRMAN EJECUTIVA RAYA DAMA MANGA LARGA BLANCO
+POSEACCBO0,POLO AIRMAN SEAL CABALLERO MANGA CORTA BLANCO
+POFORCCGR2,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA GRIS OXFORD
+POFORCCNA0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA NARANJA
+BLMCCDLAZ7,BLUSA AIRMAN MICRO CUADRO DAMA MANGA LARGA AZUL
+POCRWCCAZ6,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA AZUL REY
+PODRYDCAZ4,POLO AIRMAN DRY TEC DAMA MANGA CORTA AZUL MARINO
+PODRYCCGR1,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA GRIS JASPE (LINEA)
+CAMCRCLLV0,CAMISA AIRMAN MICRO RAYA CABALLERO MANGA LARGA LAVANDA
+POFORCCTT0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA TINTO
+BLJACDLAZ7,BLUSA AIRMAN JACKY DAMA MANGA LARGA AZUL
+CAZULCLBO0,CAMISA AIRMAN ZULU CABALLERO MANGA LARGA BLANCO
+CAMCCCLVE0,CAMISA AIRMAN MICRO CUADRO CABALLERO MANGA LARGA VERDE
+BLOXDDLAZ1,BLUSA AIRMAN OXFORD DAMA MANGA LARGA AZUL FRANCIA
+CAOXDCLAM0,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA AMARILLO BANANA
+PODRYCCNE0,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA NEGRO
+BLMZ7DLAZ5,BLUSA AIRMAN MEZCLILLA 7.5 OZ DAMA MANGA LARGA AZUL STONE
+POFORDCGR1,POLO AIRMAN FORCEONE DAMA MANGA CORTA GRIS JASPE (LINEA)
+BLJACDLLV0,BLUSA AIRMAN JACKY DAMA MANGA LARGA LAVANDA
+POFORCCNE0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA NEGRO
+CAGABCLLV0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA LAVANDA
+BLGABDLRO1,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA ROJO OSCURO
+POCRWCCRO0,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA ROJO
+CAMZ5CLAZ5,CAMISA AIRMAN NAVI DENIM CABALLERO MANGA LARGA AZUL
+POCRWCCNE0,POLO AIRMAN CREW COLD DRY CABALLERO MANGA CORTA NEGRO
+POFORDCGR2,POLO AIRMAN FORCEONE DAMA MANGA CORTA GRIS OXFORD
+BLGABDLAZ1,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA AZUL FRANCIA
+POSEADCAZ4,POLO AIRMAN SEAL DAMA MANGA CORTA AZUL MARINO
+CAPSPCLAZ4,CAMISA AIRMAN POP STRECH CABALLERO MANGA LARGA AZUL MARINO
+BLGABDCBO0,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA BLANCO
+POFORDCAZ4,POLO AIRMAN FORCEONE DAMA MANGA CORTA AZUL MARINO
+POSEACCNE0,POLO AIRMAN SEAL CABALLERO MANGA CORTA NEGRO
+POCRWDCGR1,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA GRIS JASPE (LINEA)
+BLOXDDLBO0,BLUSA AIRMAN OXFORD DAMA MANGA LARGA BLANCO
+PAGSTCXKK0,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT CABALLERO KHAKI
+POCRWDCBO0,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA BLANCO
+POFORCCAM0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA AMARILLO
+LEVESDXAZ4,LEGGINGS AIRMAN VESTIR DAMA AZUL MARINO
+CAGABCLKK0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA KHAKI
+POFORCCAZ1,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA AZUL FRANCIA
+CAAMBCLLV0,CAMISA AIRMAN AMBAR CABALLERO MANGA LARGA LAVANDA
+POCRWDCAZ4,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA AZUL MARINO
+BLMCRDLLV0,BLUSA AIRMAN MICRO RAYA DAMA MANGA LARGA LAVANDA
+BLCDRDLAZ7,BLUSA AIRMAN EJECUTIVA CUADRO DAMA MANGA CORTA AZUL
+BLMCCDLVE0,BLUSA AIRMAN MICRO CUADRO DAMA MANGA LARGA VERDE
+PODRYDCBO0,POLO AIRMAN DRY TEC DAMA MANGA CORTA BLANCO
+BLMCODLAZ2,BLUSA AIRMAN MICRO OXFORD DAMA MANGA LARGA AZUL PIZARRA
+PODRYCCAZ6,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA AZUL REY
+POSEADCGR1,POLO AIRMAN SEAL DAMA MANGA CORTA GRIS JASPE
+CAOUTCLBO0,CAMISA AIRMAN FIELD-OUTDOOR CABALLERO MANGA LARGA BLANCO
+POFORDCNE0,POLO AIRMAN FORCEONE DAMA MANGA CORTA NEGRO
+CLNEOCCNE0,CHALECO AIRMAN NEOPRENO NEGRO (N)
+BLGABDLNE0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA NEGRO
+BLOXDDLAZ2,BLUSA AIRMAN OXFORD DAMA MANGA LARGA AZUL PIZARRA
+PODRYDCGR0,POLO AIRMAN DRY TEC DAMA MANGA CORTA GRIS
+CAMCRCLRS0,CAMISA AIRMAN MICRO RAYA CABALLERO MANGA LARGA ROSA
+POFORCCAZ6,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA AZUL REY
+PAVESCXAZ4,PANTALON AIRMAN VESTIR CABALLERO AZUL MARINO
+BLGABDLBO1,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA BLANCO OPTICO
+PODRYDCNE0,POLO AIRMAN DRY TEC DAMA MANGA CORTA NEGRO
+BLOXDDLAM0,BLUSA AIRMAN OXFORD DAMA MANGA LARGA AMARILLO BANANA
+POFORDCAZ6,POLO AIRMAN FORCEONE DAMA MANGA CORTA AZUL REY
+BLCDRDLBO0,BLUSA AIRMAN EJECUTIVA CUADRO DAMA MANGA LARGA BLANCO
+BLMZ5DLAZ5,BLUSA AIRMAN NAVI DEMIN DAMA MANGA LARGA AZUL
+BLMCRDLRS0,BLUSA AIRMAN MICRO RAYA DAMA MANGA LARGA ROSA
+CAMCCCLLV0,CAMISA AIRMAN MICRO CUADRO CABALLERO MANGA LARGA LAVANDA
+PAVESCXNE0,PANTALON AIRMAN VESTIR CABALLERO NEGRO
+BLZULDLBO0,BLUSA AIRMAN ZULU DAMA MANGA LARGA BLANCO
+PAVESDXGR0,PANTALON AIRMAN VESTIR DAMA GRIS
+POSEADCRO0,POLO AIRMAN SEAL DAMA MANGA CORTA ROJO
+PAVESDXNE0,PANTALON AIRMAN VESTIR DAMA NEGRO
+BLRYADLAZ7,BLUSA AIRMAN EJECUTIVA RAYA DAMA MANGA LARGA AZUL
+PODRYDCGR1,POLO AIRMAN DRY TEC DAMA MANGA CORTA GRIS JASPE (LINEA)
+CAES3CCRN0,CAMISA AIRMAN ESCUDERIA COMBINACION 3 CABALLERO MANGA CORTA ROJO/NEGRO
+POFORDCNA0,POLO AIRMAN FORCEONE DAMA MANGA CORTA NARANJA
+POFORCCRO0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA ROJO
+CAJACCLAZ7,CAMISA AIRMAN JACKY CABALLERO MANGA LARGA AZUL
+LEVESDXGR0,LEGGINGS AIRMAN VESTIR DAMA GRIS
+POFORCCVE0,POLO AIRMAN FORCEONE CABALLERO MANGA CORTA VERDE
+POSEACCGR1,POLO AIRMAN SEAL CABALLERO MANGA CORTA GRIS JASPE
+BLGABDLAM0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA AMARILLO BANANA
+CAPSPCLNE0,CAMISA AIRMAN POP STRECH CABALLERO MANGA LARGA NEGRO
+CAMCRCLRO0,CAMISA AIRMAN MICRO RAYA CABALLERO MANGA LARGA ROJO
+POCRWDCAZ6,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA AZUL REY
+BLRYADLNE0,BLUSA AIRMAN EJECUTIVA RAYA DAMA MANGA LARGA NEGRO
+POSEACLBO0,POLO AIRMAN SEAL CABALLERO MANGA LARGA BLANCO
+CAAMBCLAZ7,CAMISA AIRMAN AMBAR CABALLERO MANGA LARGA AZUL
+CAGABCCBO1,CAMISA AIRMAN GABARDINA CABALLERO MANGA CORTA BLANCO OPTICO
+PAMCACXAZ5,PANTALON AIRMAN MEZCLILLA 14.5 OZ CABALLERO AZUL STONE CON CINTA HI-VIS AMARILLO
+BLAMBDLNE0,BLUSA AIRMAN AMBAR DAMA MANGA LARGA NEGRO
+POFORDCAZ1,POLO AIRMAN FORCEONE DAMA MANGA CORTA AZUL FRANCIA
+CAZULCLAZ0,CAMISA AIRMAN ZULU CABALLERO MANGA LARGA AZUL CIELO
+POFORDCTT0,POLO AIRMAN FORCEONE DAMA MANGA CORTA TINTO
+PAVESCXGR0,PANTALON AIRMAN VESTIR CABALLERO GRIS
+BLES2DCRN0,BLUSA AIRMAN ESCUDERIA COMBINACION 2 DAMA MANGA CORTA ROJO/NEGRO
+PAVESDXAZ4,PANTALON AIRMAN VESTIR DAMA AZUL MARINO
+CAZULCLNE0,CAMISA AIRMAN ZULU CABALLERO MANGA LARGA NEGRO
+CAPSPCLBO0,CAMISA AIRMAN POP STRECH CABALLERO MANGA LARGA BLANCO
+CAMCCCLGR0,CAMISA AIRMAN MICRO CUADRO CABALLERO MANGA LARGA GRIS
+BLOXDDLRO0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA ROJO
+BLGABDLRO0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA ROJO CLARO
+CAOXDCLKK0,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA KHAKI
+CAMCOCLAZ2,CAMISA AIRMAN MICRO OXFORD CABALLERO MANGA LARGA AZUL PIZARRA
+CHNEOCXNE0,CHAMARRA AIRMAN NEOPRENO CABALLERO NEGRO (V)
+SDFELCXGR2,SUDADERA AIRMAN FELPA CON CIERRE Y CAPUCHA CABALLERO GRIS OXFORD
+CHNEOCLNE0,CHAMARRA AIRMAN NEOPRENO NEGRO (N)
+CAZULCLGR0,CAMISA AIRMAN ZULU CABALLERO MANGA LARGA GRIS
+BLGABDLKK0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA KHAKI
+BLMCRDLAZ7,BLUSA AIRMAN MICRO RAYA DAMA MANGA LARGA AZUL
+BLPSPDLBO0,BLUSA AIRMAN POP STRECH DAMA MANGA LARGA BLANCO
+PAGSTDXKK0,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT DAMA KHAKI
+BLMCCDLGR0,BLUSA AIRMAN MICRO CUADRO DAMA MANGA LARGA GRIS
+CLNYLDXAZ4,CHALECO AIRMAN NYLON CAPITONADO DAMA AZUL MARINO
+SDFELCXNE0,SUDADERA AIRMAN FELPA CON CIERRE Y CAPUCHA CABALLERO NEGRO
+CAOUTCLAZ0,CAMISA AIRMAN FIELD-OUTDOOR CABALLERO MANGA LARGA AZUL
+CAGABCLRO0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA ROJO CLARO
+PODRYCCRO0,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA ROJO
+CAMCNCLAZ5,CAMISA AIRMAN MEZCLILLA 7.5 OZ CABALLERO MANGA CORTA AZUL STONE CON CINTA HI VI
+CAOXDCLRO0,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA ROJO
+PODRYCCAZ0,POLO AIRMAN DRY TEC CABALLERO MANGA CORTA AZUL CIELO
+PAGSTDXNE0,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT DAMA NEGRO
+BLMCODLAZ1,BLUSA AIRMAN MICRO OXFORD DAMA MANGA LARGA AZUL FRANCIA
+POCRWDCRO0,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA ROJO
+POFORDCAM0,POLO AIRMAN FORCEONE DAMA MANGA CORTA AMARILLO
+BLGABDLLV0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA LAVANDA
+BLZULDLGR0,BLUSA AIRMAN ZULU DAMA MANGA LARGA GRIS
+BLGABDCBO1,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA BLANCO OPTICO
+BLAMBDLLV0,BLUSA AIRMAN AMBAR DAMA MANGA LARGA LAVANDA
+PAGSTCXNE0,PANTALON AIRMAN GABARDINA STRECH CONFORT MODERN FIT CABALLERO NEGRO
+BLZULDLBO0,BLUSA AIRMAN ZULU DAMA MANGA LARGA BLANCO
+POCRWDCNE0,POLO AIRMAN CREW COLD DRY DAMA MANGA CORTA NEGRO
+BLZULDLNE0,BLUSA AIRMAN ZULU DAMA MANGA LARGA NEGRO
+BLGABDLGR0,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA GRIS
+CARYACLAZ7,CAMISA AIRMAN EJECUTIVA RAYA CABALLERO MANGA LARGA AZUL
+BLAMBDLAZ7,BLUSA AIRMAN AMBAR DAMA MANGA LARGA AZUL
+CAMCOCLBO0,CAMISA AIRMAN MICRO OXFORD CABALLERO MANGA LARGA BLANCO
+CAOUTCLGR0,CAMISA AIRMAN FIELD-OUTDOOR CABALLERO MANGA LARGA GRIS
+BLOXDDLKK0,BLUSA AIRMAN OXFORD DAMA MANGA LARGA KHAKI
+BLOXDDLNE0,BLUSA AIRMAN OXFORD DAMA MANGA LARGA NEGRO
+BLMCCDLLV0,BLUSA AIRMAN MICRO CUADRO DAMA MANGA LARGA LAVANDA
+SDFELCXAZ4,SUDADERA AIRMAN FELPA CON CIERRE Y CAPUCHA CABALLERO AZUL MARINO
+POSEADLGR1,POLO AIRMAN SEAL DAMA MANGA CORTA GRIS JASPE
+CAMCACLAZ5,CAMISA AIRMAN MEZCLILLA 7.5 OZ CABALLERO MANGA LARGA AZUL STONE CON CINTA HI-VIS
+CAES2CCRN0,CAMISA AIRMAN ESCUDERIA COMBINACION 2 CABALLERO MANGA CORTA ROJO/NEGRO
+PODRYDCAZ0,POLO AIRMAN DRY TEC DAMA MANGA CORTA AZUL CIELO
+BLMCRDLRO0,BLUSA AIRMAN MICRO RAYA DAMA MANGA LARGA ROJO
+BLES2DCAN0,BLUSA AIRMAN ESCUDERIA COMBINACION 2 DAMA MANGA CORTA AZUL/NEGRO
+CAGABCLAM0,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA AMARILLO BANANA
+CAES2CCAN0,CAMISA AIRMAN ESCUDERIA COMBINACION 2 CABALLERO MANGA CORTA AZUL/NEGRO
+CAES3CCAN0,CAMISA AIRMAN ESCUDERIA COMBINACION 3 CABALLERO MANGA CORTA AZUL/NEGRO
+CACDRCLBO0,CAMISA AIRMAN EJECUTIVA CUADRO CABALLERO MANGA LARGA BLANCO
+BLPSPDLAZ4,BLUSA AIRMAN POP STRECH DAMA MANGA CORTA AZUL MARINO
+BLGABDLAZ4,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA AZUL MARINO
+BLMCRDCRS0,BLUSA AIRMAN MICRO RAYA DAMA MANGA CORTA ROSA ROSA
+POSEADCAZ3,POLO AIRMAN SEAL DAMA MANGA CORTA AZUL REY
+CAMCOCLAZ1,CAMISA AIRMAN MICRO OXFORD CABALLERO MANGA LARGA AZUL FRANCIA
+POSEACCAZ3,POLO AIRMAN SEAL CABALLERO MANGA CORTA AZUL REY
+CAPSPCLAZ1,CAMISA AIRMAN POP STRECH CABALLERO MANGA LARGA AZUL FRANCIA
+CAGABCLAZ3,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA AZUL MARINO CLARO
+POSEADCNE0,POLO AIRMAN SEAL DAMA MANGA CORTA NEGRO
+POSEADLAZ4,POLO AIRMAN SEAL DAMA MANGA LARGA AZUL MARINO
+POFORCLGR1,POLO AIRMAN FORCEONE CABALLERO MANGA LARGA GRIS JASPE (LINEA)
+LEVESDXNE0,LEGGINGS AIRMAN VESTIR DAMA NEGRO
+POSEACLGR1,POLO AIRMAN SEAL CABALLERO MANGA LARGA GRIS JASPE
+BLOUTDLBO0,BLUSA AIRMAN FIELD-OUTDOOR DAMA MANGA LARGA BLANCO
+BLLGWDXIV0,BLUSA AIRMAN LIGHTWEAR DAMA IVORY
+CLNYLCXNE0,CHALECO AIRMAN NYLON CAPITONADO CABALLERO NEGRO
+BLOUTDLGR0,BLUSA AIRMAN FIELD-OUTDOOR DAMA MANGA LARGA GRIS
+CAAMBCLNE0,CAMISA AIRMAN AMBAR CABALLERO MANGA LARGA NEGRO
+PODRYDCAZ6,POLO AIRMAN DRY TEC DAMA MANGA CORTA AZUL REY
+BLLGWDXLV0,BLUSA AIRMAN LIGHTWEAR DAMA LAVANDA
+PODRYDCRO0,POLO AIRMAN DRY TEC DAMA MANGA CORTA ROJO
+BLLGWDXAZ4,BLUSA AIRMAN LIGHTWEAR DAMA AZUL MARINO
+POFORDCVE0,POLO AIRMAN FORCEONE DAMA MANGA CORTA VERDE
+BLLGWDXNE0,BLUSA AIRMAN LIGHTWEAR DAMA NEGRO
+CARYACLNE0,CAMISA AIRMAN EJECUTIVA RAYA CABALLERO MANGA LARGA NEGRO
+CAOXDCLNE0,CAMISA AIRMAN OXFORD CABALLERO MANGA LARGA NEGRO
+BLGABDLAZ3,BLUSA AIRMAN GABARDINA DAMA MANGA LARGA AZUL MARINO CLARO
+BLMCODLBO0,BLUSA AIRMAN MICRO OXFORD DAMA MANGA LARGA BLANCO
+CACDRCLAZ7,CAMISA AIRMAN EJECUTIVA CUADRO CABALLERO MANGA LARGA AZUL
+CAGABCLAZ4,CAMISA AIRMAN GABARDINA CABALLERO MANGA LARGA AZUL MARINO
+CLNEOCXNE0,CHALECO AIRMAN NEOPRENO CABALLERO NEGRO (V)
+CHNEODXNE0,CHAMARRA AIRMAN NEOPRENO DAMA NEGRO
+POFORCLAZ4,POLO AIRMAN FORCEONE CABALLERO MANGA LARGA AZUL MARINO
+CHNEODXAZ4,CHAMARRA AIRMAN NEOPRENO DAMA AZUL MARINO
+CLNYLCXAZ4,CHALECO AIRMAN NYLON CAPITONADO CABALLERO AZUL MARINO
+POFORDCRO0,POLO AIRMAN FORCEONE DAMA MANGA CORTA ROJO
+POSEACLAZ4,POLO AIRMAN SEAL CABALLERO MANGA LARGA AZUL MARINO
+BLPSPDLNE0,BLUSA AIRMAN POP STRECH DAMA MANGA LARGA NEGRO
+CAMZ7CCAZ5,CAMISA AIRMAN MEZCLILLA 7.5 OZ CABALLERO MANGA CORTA AZUL STONE
+BLES3DCRN0,BLUSA AIRMAN ESCUDERIA COMBINACION 3 DAMA MANGA CORTA ROJO/NEGRO
+BLOUTDLAZ0,BLUSA AIRMAN FIELD-OUTDOOR DAMA MANGA LARGA AZUL
+BLES3DCAN0,BLUSA AIRMAN ESCUDERIA COMBINACION 3 DAMA MANGA CORTA AZUL/NEGRO
+CHNEOCXAZ4,CHAMARRA AIRMAN NEOPRENO CABALLERO AZUL MARINO
+POSEADLBO0,POLO AIRMAN SEAL DAMA MANGA LARGA BLANCO
+CLNEOCXAZ4,CHALECO AIRMAN NEOPRENO CABALLERO AZUL MARINO
+CLNEODXNE0,CHALECO AIRMAN NEOPRENO DAMA NEGRO
+BLPSPDLAZ1,BLUSA AIRMAN POP STRECH DAMA MANGA LARGA AZUL FRANCIA
+CLNEODXAZ4,CHALECO AIRMAN NEOPRENO DAMA AZUL MARINO
+CLNYLDXNE0,CHALECO AIRMAN NYLON CAPITONADO DAMA NEGRO
+CAGABCCAZ4,CAMISA AIRMAN GABARDINA CABALLERO MANGA CORTA AZUL MARINO
+BLAMBDCLV0,BLUSA AIRMAN AMBAR DAMA MANGA CORTA LAVANDA
+BLAMBDCNE0,BLUSA AIRMAN AMBAR DAMA MANGA CORTA NEGRO
+BLCDRDCAZ7,BLUSA AIRMAN EJECUTIVA CUADRO DAMA MANGA CORTA AZUL
+BLCDRDCBO0,BLUSA AIRMAN EJECUTIVA CUADRO DAMA MANGA CORTA BLANCO
+BLGABDCKK0,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA KHAKI
+BLGABDCAM0,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA AMARILLO BANANA
+BLGABDCAZ1,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA AZUL FRANCIA
+BLGABDCAZ4,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA AZUL MARINO
+BLGABDDCGR0,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA GRIS
+BLGABDCLV0,BLUSA AIRMAN GABARDina DAMA MANGA CORTA LAVANDA
+BLGABDCNE0,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA NEGRO
+BLGABDCR01,BLUSA AIRMAN GABARDINA DAMA MANGA CORTA ROJO OSCURO
+BLJACDCAZ7,BLUSA AIRMAN JACKY DAMA MANGA CORTA AZUL
+BLJACDCLV0,BLUSA AIRMAN JACKY DAMA MANGA CORTA LAVANDA
+BLMCCDCAZ7,BLUSA AIRMAN MICRO CUADRO DAMA MANGA CORTA AZUL
+BLMCCDCGR0,BLUSA AIRMAN MICRO CUADRO DAMA MANGA CORTA GRIS
+BLMCCDCVE0,BLUSA AIRMAN MICRO CUADRO DAMA MANGA CORTA VERDE
+BLMCODCBO0,BLUSA AIRMAN MICRO OXFORD DAMA MANGA CORTA BLANCO
+BLMCODCAZ1,BLUSA AIRMAN MICRO OXFORD DAMA MANGA CORTA AZUL FRANCIA
+BLMCRDCAZ7,BLUSA AIRMAN MICRO RAYA DAMA MANGA CORTA AZUL
+BLMCRDCLV0,BLUSA AIRMAN MICRO RAYA DAMA MANGA CORTA LAVANDA
+BLMCRDCRO0,BLUSA AIRMAN MICRO RAYA DAMA MANGA CORTA ROJO
+BLMZ5DCAZ5,BLUSA AIRMAN NAVI DEMIN DAMA MANGA CORTA AZUL
+BLMZ7DCAZ5,BLUSA AIRMAN MEZCLILLA 7.5 OZ DAMA MANGA CORTA AZUL STONE
+BLOXDDCAZ1,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AZUL FRANCIA
+BLOXDDCAZ2,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AZUL PIZARRA
+BLOXDDCBO0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA BLANCO
+BLOXDDCAZ1,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AMARILLO BANANA
+BLOXDDCAZ2,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AZUL PIZARRA
+BLOXDDCBO0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA BLANCO
+BLOXDDCAZ1,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AMARILLO BANANA
+BLOXDDCAZ2,BLUSA AIRMAN OXFORD DAMA MANGA CORTA AZUL PIZARRA
+BLOXDDCBO0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA BLANCO
+BLOXDDCKK0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA KHAKI
+BLOXDDCNE0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA NEGRO
+BLOXDDCRO0,BLUSA AIRMAN OXFORD DAMA MANGA CORTA ROJO
+BLPSPDCAZ1,BLUSA AIRMAN POP STRECH DAMA MANGA CORTA AZUL FRANCIA`;
+      // Elementos del DOM
+      const get = (id) => document.getElementById(id);
+      const requestForm = get('requestForm');
+      const codigoPrendaInput = get('codigoPrenda');
+      const codeDescriptionDiv = get('codeDescription');
+      const productCodesDatalist = get('productCodes');
+      const requestsContainerPending = get('requestsContainerPending');
+      const requestsContainerCompleted = get('requestsContainerCompleted');
+      const noRequestsMessagePending = get('noRequestsMessagePending');
+      const noRequestsMessageCompleted = get('noRequestsMessageCompleted');
+      const exportButton = get('exportButton');
+      // Modals
+      const settingsModal = get('settingsModal');
+      const settingsButton = get('settingsButton');
+      const closeSettingsModal = get('closeSettingsModal');
+      const completionModal = get('completionModal');
+      // Formulario de settings
+      const addCodeForm = get('addCodeForm');
+      const newCodeInput = get('newCode');
+      const newDescriptionInput = get('newDescription');
+      const addCodeMessage = get('addCodeMessage');
+      const addUserForm = get('addUserForm');
+      const newUserInput = get('newUser');
+      const addUserMessage = get('addUserMessage');
+      const personaAutorizadaSelect = get('personaAutorizada');
+      const authorizedUsersUl = get('authorizedUsersUl');
+      // Modal de completado
+      const cancelCompletionButton = get('cancelCompletionButton');
+      const confirmCompletionButton = get('confirmCompletionButton');
+      const cajaNumeroInput = get('cajaNumeroInput');
+      const comentariosEntregaInput = get('comentariosEntregaInput');
+      // Almacenamiento de datos
+      let productData = [];
+      let customCodes = JSON.parse(localStorage.getItem('customCodes')) || [];
+      let pendingRequests = JSON.parse(localStorage.getItem('pendingRequests')) || [];
+      let finalizedRequests = JSON.parse(localStorage.getItem('finalizedRequests')) || []; // Contendrá completados y cancelados
+      let currentEditingRequestId = null;
+      // --- INICIALIZACIÓN ---
+      function parseCSV(data) {
+        const lines = data.split('\n').filter(line => line.trim() !== '');
+        const headers = lines[0].split(',').map(h => h.trim());
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+          const obj = {};
+          const currentline = lines[i].split(',');
+          for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = currentline[j] ? currentline[j].trim() : '';
+          }
+          result.push(obj);
+        }
+        return result;
+      }
+      function populateProductCodesDatalist() {
+        const allProducts = [...productData, ...customCodes];
+        productCodesDatalist.innerHTML = '';
+        allProducts.forEach(product => {
+          const option = document.createElement('option');
+          option.value = product.CODIGO;
+          option.textContent = product.DESCRIPCION;
+          productCodesDatalist.appendChild(option);
+        });
+      }
+      function populateAuthorizedUsers() {
+        // Limpia la lista y el select actual, excepto la primera opción deshabilitada
+        authorizedUsersUl.innerHTML = '';
+        const options = Array.from(personaAutorizadaSelect.options);
+        options.forEach(option => {
+          if(option.value) { // si no es el placeholder
+            const li = document.createElement('li');
+            li.textContent = option.value;
+            authorizedUsersUl.appendChild(li);
+          }
+        });
+      }
+      function getProductDescription(code) {
+        const allProducts = [...productData, ...customCodes];
+        const foundProduct = allProducts.find(product => product.CODIGO.toLowerCase() === code.toLowerCase());
+        return foundProduct ? foundProduct.DESCRIPCION : 'Descripción no encontrada';
+      }
+      // --- LÓGICA DE RENDERIZADO ---
+      function renderAll() {
+        renderPendingRequests();
+        renderFinalizedRequests();
+        updateMessagesVisibility();
+      }
+      function updateMessagesVisibility() {
+        noRequestsMessagePending.style.display = pendingRequests.length === 0 ? 'flex' : 'none';
+        noRequestsMessageCompleted.style.display = finalizedRequests.length === 0 ? 'flex' : 'none';
+      }
+      function renderPendingRequests() {
+        requestsContainerPending.innerHTML = '';
+        pendingRequests.forEach(req => {
+          const now = new Date();
+          const creationDate = new Date(req.timestamp);
+          const diffMinutes = (now - creationDate) / (1000 * 60);
+          let statusClass = 'green-status';
+          if (diffMinutes > 60) {
+            statusClass = 'red-status';
+          } else if (diffMinutes > 30) {
+            statusClass = 'yellow-status';
+          }
+          const card = document.createElement('div');
+          card.className = `p-4 rounded-lg shadow-md status-card ${statusClass}`;
+          card.dataset.id = req.id;
+          let innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-lg">${req.personaAutorizada}</p>
+                            <p class="text-sm text-gray-600">${new Date(req.timestamp).toLocaleString()}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold">${req.codigoPrenda} / Talla: ${req.talla}</p>
+                            <p class="text-sm text-gray-600">Pedido: ${req.numPedido}</p>
+                        </div>
+                    </div>
+                    <p class="text-xs italic text-gray-500 mt-1">${getProductDescription(req.codigoPrenda)}</p>
+                    ${req.observaciones ? `<p class="mt-2 text-sm bg-gray-100 p-2 rounded"><strong>Obs:</strong> ${req.observaciones}</p>` : ''}
+                `;
+          if (req.cajaNumero) {
+            innerHTML += `
+                        <div class="mt-4 pt-4 border-t border-gray-300">
+                             <div class="text-right">
+                                <p class="text-xl font-bold">Caja: ${req.cajaNumero}</p>
+                                ${req.comentariosEntrega ? `<p class="text-sm text-gray-700">${req.comentariosEntrega}</p>` : ''}
+                             </div>
+                             <div class="flex justify-end space-x-2 mt-2">
+                                <button class="deliver-btn bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm">Entregado</button>
+                                <button class="cancel-btn bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm">Cancelar</button>
+                             </div>
+                        </div>`;
+          } else {
+            card.classList.add('cursor-pointer', 'hover:shadow-lg');
+            card.addEventListener('click', () => openCompletionModal(req.id));
+          }
+          card.innerHTML = innerHTML;
+          requestsContainerPending.appendChild(card);
+        });
+        // Adjuntar event listeners a los botones de entregar/cancelar
+        document.querySelectorAll('.deliver-btn').forEach(btn => btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleDeliver(e.target.closest('.status-card').dataset.id);
+        }));
+        document.querySelectorAll('.cancel-btn').forEach(btn => btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleCancel(e.target.closest('.status-card').dataset.id);
+        }));
+      }
+      function renderFinalizedRequests() {
+        requestsContainerCompleted.innerHTML = '';
+        finalizedRequests.forEach(req => {
+          const isCompleted = req.status === 'Completado';
+          const card = document.createElement('div');
+          card.className = `p-4 rounded-lg shadow-md ${isCompleted ? 'completed-status' : 'red-status'}`;
+          const finalizationTime = new Date(req.finalizationDate).toLocaleString();
+          const statusLabel = isCompleted ? `Completado: ${finalizationTime}` : `Cancelado: ${finalizationTime}`;
+          card.innerHTML = `
+                    <div class="flex justify-between items-start ${isCompleted ? 'completed-text' : ''}">
+                        <div>
+                            <p class="font-bold text-lg">${req.personaAutorizada}</p>
+                            <p class="text-sm">${req.codigoPrenda} / Talla: ${req.talla}</p>
+                            <p class="text-xs">Pedido: ${req.numPedido}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold">${statusLabel}</p>
+                            ${isCompleted ? `<p class="text-sm">Caja: ${req.cajaNumero || 'N/A'}</p>` : `<p class="text-sm font-bold text-red-800">Causa: ${req.cancellationReason || 'No especificada'}</p>`}
+                        </div>
+                    </div>
+                `;
+          requestsContainerCompleted.appendChild(card);
+        });
+      }
+      // --- MANEJO DE EVENTOS ---
+      requestForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(requestForm);
+        const newRequest = {
+          id: `req_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          personaAutorizada: formData.get('personaAutorizada'),
+          codigoPrenda: formData.get('codigoPrenda'),
+          talla: formData.get('talla'),
+          numPedido: formData.get('numPedido'),
+          observaciones: formData.get('observaciones'),
+          cajaNumero: null,
+          comentariosEntrega: null,
+          status: 'Pendiente' // Pendiente, Completado, Cancelado
+        };
+        pendingRequests.push(newRequest);
+        localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+        requestForm.reset();
+        codeDescriptionDiv.textContent = '';
+        renderAll();
+      });
+      codigoPrendaInput.addEventListener('input', () => {
+        const description = getProductDescription(codigoPrendaInput.value);
+        codeDescriptionDiv.textContent = description === 'Descripción no encontrada' ? '' : description;
+      });
+      // Settings Modal Logic
+      settingsButton.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+      closeSettingsModal.addEventListener('click', () => settingsModal.classList.add('hidden'));
+      settingsModal.addEventListener('click', (e) => {
+        if (e.target.id === 'settingsModal') settingsModal.classList.add('hidden');
+      });
+      addCodeForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        customCodes.push({ CODIGO: newCodeInput.value.toUpperCase(), DESCRIPCION: newDescriptionInput.value });
+        localStorage.setItem('customCodes', JSON.stringify(customCodes));
+        populateProductCodesDatalist();
+        addCodeMessage.classList.remove('hidden');
+        setTimeout(() => addCodeMessage.classList.add('hidden'), 3000);
+        addCodeForm.reset();
+      });
+      addUserForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newUser = newUserInput.value.trim();
+        if (newUser) {
+          const option = document.createElement('option');
+          option.value = newUser;
+          option.textContent = newUser;
+          personaAutorizadaSelect.appendChild(option);
+          const li = document.createElement('li');
+          li.textContent = newUser;
+          authorizedUsersUl.appendChild(li);
+          addUserMessage.classList.remove('hidden');
+          setTimeout(() => addUserMessage.classList.add('hidden'), 3000);
+          addUserForm.reset();
+        }
+      });
+      // Completion Modal Logic
+      function openCompletionModal(id) {
+        currentEditingRequestId = id;
+        completionModal.classList.remove('hidden');
+        cajaNumeroInput.focus();
+      }
+      cancelCompletionButton.addEventListener('click', () => {
+        completionModal.classList.add('hidden');
+        cajaNumeroInput.value = '';
+        comentariosEntregaInput.value = '';
+      });
+      confirmCompletionButton.addEventListener('click', () => {
+        const req = pendingRequests.find(r => r.id === currentEditingRequestId);
+        if (req && cajaNumeroInput.value.trim() !== '') {
+          req.cajaNumero = cajaNumeroInput.value.trim();
+          req.comentariosEntrega = comentariosEntregaInput.value.trim();
+          localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+          renderAll();
+          cancelCompletionButton.click(); // Cierra y resetea el modal
+        } else {
+          alert('Por favor, ingresa un número de caja.');
+        }
+      });
+      // Deliver/Cancel Logic
+      function handleDeliver(id) {
+        const reqIndex = pendingRequests.findIndex(r => r.id === id);
+        if(reqIndex > -1) {
+          const [req] = pendingRequests.splice(reqIndex, 1);
+          req.status = 'Completado';
+          req.finalizationDate = new Date().toISOString();
+          finalizedRequests.unshift(req); // Añade al principio
+          localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+          localStorage.setItem('finalizedRequests', JSON.stringify(finalizedRequests));
+          renderAll();
+        }
+      }
+      function handleCancel(id) {
+        const reason = prompt("Por favor, ingresa la causa de la cancelación:");
+        if (reason !== null) { // Si el usuario no presiona "Cancelar" en el prompt
+          const reqIndex = pendingRequests.findIndex(r => r.id === id);
+          if(reqIndex > -1) {
+            const [req] = pendingRequests.splice(reqIndex, 1);
+            req.status = 'Cancelado';
+            req.finalizationDate = new Date().toISOString();
+            req.cancellationReason = reason || "No especificada";
+            finalizedRequests.unshift(req); // Añade al principio
+            localStorage.setItem('pendingRequests', JSON.stringify(pendingRequests));
+            localStorage.setItem('finalizedRequests', JSON.stringify(finalizedRequests));
+            renderAll();
+          }
+        }
+      }
+      // --- EXPORTACIÓN ---
+      exportButton.addEventListener('click', () => {
+        if (finalizedRequests.length === 0) {
+          alert('No hay requerimientos finalizados para exportar.');
+          return;
+        }
+        const headers = [
+          'ID de Requerimiento', 'Fecha y Hora de Creación', 'Persona Autorizada', 
+          'Codigo de la prenda', 'Descripción', 'Talla', 'Num de Pedido', 'Observaciones', 
+          'Estado', 'Num de Caja', 'Comentarios de Entrega', 'Fecha y Hora de Finalización', 'Causa de Cancelación'
+        ];
+        const rows = finalizedRequests.map(req => {
+          const safe = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+          return [
+            safe(req.id),
+            safe(new Date(req.timestamp).toLocaleString()),
+            safe(req.personaAutorizada),
+            safe(req.codigoPrenda),
+            safe(getProductDescription(req.codigoPrenda)),
+            safe(req.talla),
+            safe(req.numPedido),
+            safe(req.observaciones),
+            safe(req.status),
+            safe(req.cajaNumero),
+            safe(req.comentariosEntrega),
+            safe(new Date(req.finalizationDate).toLocaleString()),
+            safe(req.cancellationReason)
+          ].join(',');
+        });
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // \uFEFF for BOM
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'requerimientos_export.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+      // --- INICIO Y TIMERS ---
+      productData = parseCSV(csvData);
+      populateProductCodesDatalist();
+      populateAuthorizedUsers();
+      renderAll();
+      setInterval(() => {
+        renderPendingRequests();
+      }, 60000); // Actualiza cada minuto el estado de los colores
+    });
+  </script>
+</body>
+</html>
