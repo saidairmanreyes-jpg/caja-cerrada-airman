@@ -4,7 +4,8 @@
  */
 
 export const printLabel = async (data) => {
-  const { code, description, talla, quantity, op, location, date, inventory_id, warehouse, package_id } = data;
+  const { code, description, talla, quantity, qty, op, location, date, inventory_id, warehouse, package_id } = data;
+  const finalQty = quantity !== undefined ? quantity : qty;
 
   // Generate a 6-digit Package ID if not present
   const pkgId = package_id || Math.floor(100000 + Math.random() * 900000).toString();
@@ -28,7 +29,7 @@ export const printLabel = async (data) => {
   // Format: [Code+Talla:12][Qty:2][OP:var][Date:6][PkgID:6]
   const cleanCode = (code || '').substring(0, 10).padEnd(10, ' ');
   const cleanTalla = (talla || '').substring(0, 2).padEnd(2, ' ');
-  const cleanQty = String(quantity || 0).substring(0, 2).padStart(2, '0');
+  const cleanQty = String(finalQty || 0).substring(0, 2).padStart(2, '0');
   const cleanOP = String(op || '0').substring(0, 10).padEnd(10, ' '); // Max 10 for OP to avoid overflow
   
   const qrString = `${cleanCode}${cleanTalla}${cleanQty}${cleanOP}${qrDate}${pkgId}`;
@@ -46,7 +47,7 @@ QRCODE 550, 60, M, 7, A, 0, "${qrString}"
 TEXT 80, 230, "ROMAN.TTF", 0, 14, 14, "COD: ${code}"
 TEXT 80, 290, "ROMAN.TTF", 0, 10, 10, "${(description || '').substring(0, 30)}"
 TEXT 80, 400, "ROMAN.TTF", 0, 12, 12, "TALLA: ${talla}"
-TEXT 400, 400, "ROMAN.TTF", 0, 12, 12, "CANT: ${quantity}"
+TEXT 400, 400, "ROMAN.TTF", 0, 12, 12, "CANT: ${finalQty}"
 TEXT 80, 460, "ROMAN.TTF", 0, 10, 10, "OP: ${op || 'S/OP'}"
 TEXT 420, 460, "ROMAN.TTF", 0, 12, 12, "PKG: ${pkgId}"
 TEXT 80, 520, "ROMAN.TTF", 0, 15, 15, "LOC: ${location}"
@@ -129,7 +130,7 @@ export const printLabelsBatch = async (items, onProgress) => {
 
       const cleanCode = (data.code || '').substring(0, 10).padEnd(10, ' ');
       const cleanTalla = (data.talla || '').substring(0, 2).padEnd(2, ' ');
-      const cleanQty = String(data.quantity || 0).substring(0, 2).padStart(2, '0');
+      const cleanQty = String(data.quantity !== undefined ? data.quantity : (data.qty || 0)).substring(0, 2).padStart(2, '0');
       const cleanOP = String(data.op || '0').substring(0, 10).padEnd(10, ' ');
       
       const qrString = `${cleanCode}${cleanTalla}${cleanQty}${cleanOP}${qrDate}${pkgId}`;
@@ -146,7 +147,7 @@ QRCODE 550, 60, M, 7, A, 0, "${qrString}"
 TEXT 80, 230, "ROMAN.TTF", 0, 14, 14, "COD: ${data.code}"
 TEXT 80, 290, "ROMAN.TTF", 0, 10, 10, "${(data.description || '').substring(0, 30)}"
 TEXT 80, 400, "ROMAN.TTF", 0, 12, 12, "TALLA: ${data.talla}"
-TEXT 400, 400, "ROMAN.TTF", 0, 12, 12, "CANT: ${data.quantity}"
+TEXT 400, 400, "ROMAN.TTF", 0, 12, 12, "CANT: ${data.quantity !== undefined ? data.quantity : data.qty}"
 TEXT 80, 460, "ROMAN.TTF", 0, 10, 10, "OP: ${data.op || 'S/OP'}"
 TEXT 420, 460, "ROMAN.TTF", 0, 12, 12, "PKG: ${pkgId}"
 TEXT 80, 520, "ROMAN.TTF", 0, 15, 15, "LOC: ${data.location}"

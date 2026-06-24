@@ -311,6 +311,7 @@ export default function Reception() {
       let isKanbanBox = false
       let currentQty = data.qty
       let currentOp = data.op
+      let currentTalla = data.talla
 
       let isTransfer = false
       let oldLocationId = null
@@ -337,6 +338,7 @@ export default function Reception() {
           .single()
         
         if (invRecord) {
+          currentTalla = invRecord.talla
           if (invRecord.warehouse === 'TRANSITO') {
             isKanbanBox = true
             productData = invRecord.products
@@ -469,7 +471,7 @@ export default function Reception() {
         // Inserción normal de nueva recepción
         const inventoryPayload = {
           product_id:  productData.id,
-          talla:       data.talla,
+          talla:       currentTalla,
           quantity:    data.qty,
           op:          data.op || 'S/OP',
           entry_date:  finalEntryDate, // Usar fecha de OP original si existe
@@ -504,7 +506,7 @@ export default function Reception() {
       const printData = {
         code: productData.code,
         description: productData.description.toUpperCase(),
-        talla: data.talla,
+        talla: currentTalla,
         quantity: currentQty,
         op: currentOp ? currentOp.toUpperCase() : 'S/OP',
         location: locationName,
@@ -531,7 +533,7 @@ export default function Reception() {
         await addDoc(collection(db, 'reception_history'), {
           code: productData.code,
           description: productData.description.toUpperCase(),
-          talla: data.talla,
+          talla: currentTalla,
           quantity: currentQty,
           op: currentOp ? currentOp.toUpperCase() : 'S/OP',
           location: locationName,
@@ -551,7 +553,7 @@ export default function Reception() {
       const assignment = { 
         location: locationName, 
         code: productData.code, 
-        talla: data.talla, 
+        talla: currentTalla, 
         qty: currentQty, 
         op: currentOp, 
         description: productData.description,
@@ -572,7 +574,7 @@ export default function Reception() {
           locationName, 
           productData.code, 
           productData.description, 
-          data.talla, 
+          currentTalla, 
           currentQty, 
           currentOp, 
           null, 
@@ -622,6 +624,7 @@ export default function Reception() {
       description: desc, 
       talla, 
       qty, 
+      quantity: qty,
       op,
       inventory_id: inventoryId,
       warehouse: activeWarehouse,
