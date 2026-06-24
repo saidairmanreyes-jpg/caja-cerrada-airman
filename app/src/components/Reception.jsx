@@ -233,29 +233,27 @@ export default function Reception() {
         }
       }
 
-      // Separadores conocidos del formato de etiquetas (incluye ] usado por etiquetas de Maquila/Hacienda)
-      const knownSeparators = ['|', ']', "'", '!', '>', '{', '-', '_'];
       let separator = null;
-      let isLegacy = false;
+      let isNewFormat = false;
 
-      // 1. Buscar en separadores explícitos primero (el que produzca exactamente 6 partes)
-      for (const sep of knownSeparators) {
-        if (input.includes(sep) && input.split(sep).length === 6) {
+      // Extraer todos los caracteres no alfanuméricos posibles del string
+      const chars = input.split('');
+      const possibleSeparators = [...new Set(chars.filter(c => !/[A-Za-z0-9]/.test(c)))];
+
+      // 1. Buscar si hay algún separador que produzca exactamente 6 partes (Formato Nuevo)
+      for (const sep of possibleSeparators) {
+        if (input.split(sep).length === 6) {
           separator = sep;
+          isNewFormat = true;
           break;
         }
       }
 
-      // 2. Si no es formato nuevo con separador conocido, intentar fallback
-      //    EXCLUIMOS el espacio para evitar que OPs con espacios (ej. "2968 A") rompan la separación
+      // 2. Fallback: Si no es formato nuevo de 6 partes, buscar cualquier separador que de al menos 3 partes (Formato Antiguo)
       if (!separator) {
-        const chars = input.split('');
-        const possibleSeparators = [...new Set(chars.filter(c => !/[A-Za-z0-9\s]/.test(c)))];
-        
         for (const sep of possibleSeparators) {
-          if (input.split(sep).length >= 3) {
+          if (sep !== ' ' && input.split(sep).length >= 3) {
             separator = sep;
-            isLegacy = true;
             break;
           }
         }
@@ -264,7 +262,7 @@ export default function Reception() {
       if (separator) {
         const parts = input.split(separator)
         
-        if (!isLegacy && parts.length === 6) {
+        if (isNewFormat && parts.length === 6) {
           return {
             code:        parts[0].trim().toUpperCase(),
             talla:       parts[1].trim().toUpperCase(),
