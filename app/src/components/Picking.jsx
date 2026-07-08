@@ -48,7 +48,7 @@ export default function Picking() {
     const talla = form.talla.toUpperCase().trim()
     const qty   = parseInt(form.qty)
 
-    // FIFO: find oldest inventory records for this code+talla with stock > 0
+    // FIFO: find oldest inventory records for this code+talla with stock > 0 and assigned location
     const { data: stock, error: se } = await supabase
       .from('inventory')
       .select('id, quantity, location_id, entry_date, locations(name), products!inner(code)')
@@ -56,7 +56,9 @@ export default function Picking() {
       .eq('talla', talla)
       .eq('warehouse', activeWarehouse)
       .gt('quantity', 0)
+      .not('location_id', 'is', null)
       .order('entry_date', { ascending: true })
+
 
     if (se || !stock || stock.length === 0) {
       setFormError(`SIN EXISTENCIAS PARA ${code} / ${talla}.`)

@@ -182,26 +182,67 @@ export default function MonitorSync() {
       const cliente = String(row.Cliente || '').toUpperCase()
 
       if (qty > 0) {
-        const { data: existing } = await supabase
+        const { data: existingList } = await supabase
           .from('requirements')
           .select('id')
           .eq('pedido_num', pedidoNum)
           .eq('product_code', codigo)
           .eq('talla', talla)
           .eq('warehouse', activeWarehouse)
-          .single()
+          .limit(1)
+
+        const existing = existingList && existingList.length > 0 ? existingList[0] : null
 
         if (!existing) {
-          await supabase.from('requirements').insert({
-            pedido_num: pedidoNum,
-            product_code: codigo,
-            talla: talla,
-            quantity: qty,
-            client_name: cliente,
-            worker_name: 'ERP SYNC',
-            warehouse: activeWarehouse,
-            requested_at: new Date().toISOString()
-          })
+          // FIFO: find oldest inventory records for this code+talla with stock > 0 and assigned location
+          const { data: stock, error: se } = await supabase
+            .from('inventory')
+            .select('id, quantity, location_id, entry_date, locations(name), products!inner(code)')
+            .eq('products.code', codigo)
+            .eq('talla', talla)
+            .eq('warehouse', activeWarehouse)
+            .gt('quantity', 0)
+            .not('location_id', 'is', null)
+            .order('entry_date', { ascending: true })
+
+          if (se || !stock || stock.length === 0) {
+            console.warn(`SIN EXISTENCIAS CON UBICACIÓN EN INVENTARIO PARA ${codigo} / ${talla}.`);
+            processed++
+            setProgress({ current: processed, total: validRows.length })
+            continue
+          }
+
+          let remaining = qty
+          const picks = []
+          for (const s of stock) {
+            if (remaining <= 0) break
+            picks.push({ ...s, take: Math.min(remaining, s.quantity) })
+            remaining -= Math.min(remaining, s.quantity)
+          }
+
+          if (remaining > 0) {
+            console.warn(`STOCK INSUFICIENTE EN UBICACIÓN PARA ${codigo} / ${talla}. FALTAN ${remaining} PIEZAS.`);
+            processed++
+            setProgress({ current: processed, total: validRows.length })
+            continue
+          }
+
+          // Insert one requirement row per pick location
+          for (const pick of picks) {
+            await supabase.from('requirements').insert({
+              pedido_num: pedidoNum,
+              product_code: codigo,
+              talla: talla,
+              quantity: pick.take,
+              client_name: cliente,
+              worker_name: 'ERP SYNC',
+              warehouse: activeWarehouse,
+              assigned_location: pick.locations ? pick.locations.name : 'SIN UBICACIÓN',
+              inventory_id: pick.id,
+              requested_at: new Date().toISOString(),
+              status: 'pending'
+            })
+          }
         } else {
           await supabase.from('requirements').update({ quantity: qty }).eq('id', existing.id)
         }
