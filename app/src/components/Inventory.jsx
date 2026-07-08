@@ -171,7 +171,7 @@ function TraceabilityModal({ onClose, warehouse }) {
                         <span style={{fontSize:'0.65rem',color:'#64748b', fontWeight:900}}>{fmt(r.date)}</span>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-                        <h4 style={{fontWeight:1000,color:'white',fontSize:'1.5rem', letterSpacing: '-0.02em'}}>{r.loc}</h4>
+                        <h4 style={{fontWeight:1000,color:'white',fontSize:'1.5rem', letterSpacing: '-0.02em'}}>{r.loc || 'SIN UBICACIÓN'}</h4>
                         <div style={{height: 20, width: 1, background: 'rgba(255,255,255,0.1)'}}></div>
                         <p style={{fontSize:'0.9rem',color:'#94a3b8', fontWeight:900, textTransform: 'uppercase'}}>
                           TALLA <strong style={{color:'white'}}>{r.talla}</strong> · CANT <strong style={{color:'white'}}>{r.quantity} PZ</strong>
@@ -268,7 +268,6 @@ export default function Inventory() {
       .select('id, talla, quantity, entry_date, op, warehouse, package_id, is_partial, locations(name), products(code, description)')
       .eq('warehouse', activeWarehouse)
       .gt('quantity', 0)
-      .not('location_id', 'is', null)
       .order('entry_date', { ascending: false })
     if (error) console.error('Error fetching inventory:', error)
     else setInventory(data || [])
@@ -411,7 +410,7 @@ export default function Inventory() {
                     color: item.is_partial?'#FBBF24':'#4ADE80',
                   }}>{item.is_partial?'ESTADO: PARCIAL':'ESTADO: COMPLETO'}</span>
 
-                  <h4 style={{fontSize:'2.25rem',fontWeight:1000,color:'white',lineHeight:1,marginBottom:'0.5rem', marginTop: '1rem', letterSpacing: '-0.03em'}}>{item.locations?.name}</h4>
+                  <h4 style={{fontSize:'2.25rem',fontWeight:1000,color:'white',lineHeight:1,marginBottom:'0.5rem', marginTop: '1rem', letterSpacing: '-0.03em'}}>{item.locations?.name || 'SIN UBICACIÓN'}</h4>
                   <p style={{fontSize:'0.85rem',fontWeight:900,color:'#EF4444',textTransform:'uppercase',marginBottom:'0.4rem', letterSpacing: '0.05em'}}>{item.products?.code}</p>
                   <p style={{fontSize:'0.8rem',color:'#94a3b8',marginBottom:'1.5rem',lineHeight:1.4,minHeight:40,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical', textTransform: 'uppercase', fontWeight: 700}}>
                     {item.products?.description || 'SIN DESCRIPCIÓN DISPONIBLE'}
@@ -456,7 +455,7 @@ export default function Inventory() {
                       onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'transparent':'rgba(255,255,255,0.01)'}
                     >
                       <td style={{padding:'1.25rem 1.5rem'}}>
-                        <span style={{fontWeight:1000,color:'white',fontSize:'1.35rem', letterSpacing: '-0.02em'}}>{item.locations?.name}</span>
+                        <span style={{fontWeight:1000,color:'white',fontSize:'1.35rem', letterSpacing: '-0.02em'}}>{item.locations?.name || 'SIN UBICACIÓN'}</span>
                       </td>
                       <td style={{padding:'1.25rem 1.5rem'}}>
                         <p style={{fontWeight:1000,color:'#EF4444',fontSize:'1rem', letterSpacing: '0.02em'}}>{item.products?.code}</p>

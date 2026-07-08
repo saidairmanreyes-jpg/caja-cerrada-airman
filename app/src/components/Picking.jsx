@@ -80,25 +80,30 @@ export default function Picking() {
     // Insert one requirement row per pick location
     try {
       for (const pick of picks) {
-        await supabase.from('requirements').insert({
+        const { error: insertErr } = await supabase.from('requirements').insert({
           worker_name:       form.worker,
           product_code:      code,
           talla,
           quantity:          pick.take,
-          pedido_num:        form.pedido.trim() || null,
-          observaciones:     form.obs.trim() || null,
+          pedido_num:        form.pedido?.trim() || null,
+          observaciones:     form.obs?.trim() || null,
           status:            'pending',
-          assigned_location: pick.locations.name,
+          assigned_location: pick.locations ? pick.locations.name : 'SIN UBICACIÓN',
           inventory_id:      pick.id,
           requested_at:      new Date().toISOString(),
           warehouse:         activeWarehouse,
         })
+
+        if (insertErr) {
+          setFormError(`ERROR AL ENVIAR LA SOLICITUD: ${insertErr.message}`)
+          setSubmitting(false); return
+        }
       }
 
       setSuccess(`SOLICITUD ENVIADA PARA ${qty} PZA(S) DE ${code}.`)
       setForm(prev => ({ ...prev, code:'', talla:'', qty:'1', pedido:'', obs:'' }))
     } catch (err) {
-      setFormError('ERROR AL ENVIAR LA SOLICITUD.')
+      setFormError(`ERROR DE SISTEMA: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
