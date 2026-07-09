@@ -263,14 +263,36 @@ export default function Inventory() {
 
   const fetchInventory = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('inventory')
-      .select('id, talla, quantity, entry_date, op, warehouse, package_id, is_partial, locations(name), products(code, description)')
-      .eq('warehouse', activeWarehouse)
-      .gt('quantity', 0)
-      .order('entry_date', { ascending: false })
-    if (error) console.error('Error fetching inventory:', error)
-    else setInventory(data || [])
+    let allData = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+    
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('id, talla, quantity, entry_date, op, warehouse, package_id, is_partial, locations(name), products(code, description)')
+        .eq('warehouse', activeWarehouse)
+        .gt('quantity', 0)
+        .not('location_id', 'is', null)
+        .order('entry_date', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        
+      if (error) {
+        console.error('Error fetching inventory page:', error)
+        hasMore = false
+      } else {
+        if (!data || data.length < pageSize) {
+          hasMore = false
+        }
+        if (data && data.length > 0) {
+          allData = [...allData, ...data]
+        }
+        page++
+      }
+    }
+    
+    setInventory(allData)
     setLoading(false)
   }, [activeWarehouse])
 
@@ -288,18 +310,20 @@ export default function Inventory() {
   }, [fetchInventory, activeWarehouse])
 
   const exportToExcel = () => {
-    const rows = inventory.map(item => ({
-      UBICACION:    item.locations?.name,
-      CODIGO:       item.products?.code,
-      DESCRIPCION:  item.products?.description,
-      TALLA:        item.talla,
-      CANTIDAD:     item.quantity,
-      OP:           item.op,
-      'PACKAGE ID':  item.package_id,
-      'FECHA FIFO':  new Date(item.entry_date).toLocaleDateString('es-MX'),
-      ESTADO:       item.is_partial ? 'PARCIAL' : 'COMPLETO',
-      ALMACEN:      item.warehouse,
-    }))
+    const rows = inventory
+      .filter(item => item.locations?.name)
+      .map(item => ({
+        UBICACION:    item.locations?.name,
+        CODIGO:       item.products?.code || '',
+        DESCRIPCION:  item.products?.description || '',
+        TALLA:        item.talla || '',
+        CANTIDAD:     item.quantity,
+        OP:           item.op || '',
+        'PACKAGE ID':  item.package_id || '',
+        'FECHA FIFO':  item.entry_date ? new Date(item.entry_date).toLocaleDateString('es-MX') : '',
+        ESTADO:       item.is_partial ? 'PARCIAL' : 'COMPLETO',
+        ALMACEN:      item.warehouse,
+      }))
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Inventario')
@@ -316,9 +340,9 @@ export default function Inventory() {
   }
 
   const filteredInv = inventory.filter(item =>
-    item.products?.code?.toLowerCase().includes(filter.toLowerCase()) ||
-    item.locations?.name?.toLowerCase().includes(filter.toLowerCase()) ||
-    item.op?.toLowerCase().includes(filter.toLowerCase())
+    (item.products?.code?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+    (item.locations?.name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+    (item.op?.toLowerCase() || '').includes(filter.toLowerCase())
   )
 
   return (
