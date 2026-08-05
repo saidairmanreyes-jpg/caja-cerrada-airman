@@ -7,7 +7,7 @@ import Picking from './components/Picking'
 import Inventory from './components/Inventory'
 import Admin from './components/Admin'
 import PickingQueue from './components/PickingQueue'
-import OrderStatusMonitor from './components/OrderStatusMonitor'
+import ExternalProcesses from './components/ExternalProcesses'
 import Login from './components/Login'
 import Maquila from './components/Maquila'
 import { useAuth } from './context/AuthContext'
@@ -24,7 +24,7 @@ export default function App() {
     ...(hasPermission('reception') ? [{ id: 'reception', label: 'RECEPCIÓN', icon: '🚚' }] : []),
     ...(hasPermission('picking') ? [{ id: 'picking', label: 'SURTIDO', icon: '📦' }] : []),
     ...(hasPermission('monitor') ? [{ id: 'monitor', label: 'MONITOR', icon: '📊' }] : []),
-    ...(hasPermission('order_status') ? [{ id: 'order_status', label: 'ESTATUS', icon: '⏳' }] : []),
+    ...(hasPermission('external_processes') ? [{ id: 'external_processes', label: 'PROCESOS EXTERNOS', icon: '🧵' }] : []),
     ...(hasPermission('inventory') ? [{ id: 'inventory', label: 'INVENTARIO', icon: '🏢' }] : []),
     ...(hasPermission('maquila') ? [{ id: 'maquila', label: 'MAQUILA', icon: '✂️' }] : []),
     ...(hasAnyAdminPermission ? [{ id: 'admin', label: 'ADMIN', icon: '⚙️' }] : []),
@@ -206,7 +206,7 @@ export default function App() {
             {activeTab === 'reception' && <Reception />}
             {activeTab === 'picking' && <Picking />}
             {activeTab === 'monitor' && <PickingQueue />}
-            {activeTab === 'order_status' && <OrderStatusMonitor />}
+            {activeTab === 'external_processes' && <ExternalProcesses />}
             {activeTab === 'inventory' && <Inventory />}
             {activeTab === 'maquila' && <Maquila />}
             {activeTab === 'admin' && <Admin />}

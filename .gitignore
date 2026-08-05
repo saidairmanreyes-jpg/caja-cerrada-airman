@@ -26,3 +26,9 @@ lerna-debug.log*
 # Archivos de sistema
 Thumbs.db
 desktop.ini
+
+# Archivos temporales de pruebas local
+app/*.cjs
+app/deployed_bundle.js
+app/inspect_receptions.js
+

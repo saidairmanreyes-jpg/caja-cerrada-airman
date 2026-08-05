@@ -35,11 +35,16 @@ const PERMISSION_GROUPS = [
     items: []
   },
   {
-    id: 'order_status',
-    label: 'ESTATUS DE PEDIDOS',
-    description: 'MONITOR DE ESTADO GENERAL DE ÓRDENES',
+    id: 'external_processes',
+    label: 'PROCESOS EXTERNOS',
+    description: 'CONTROL DE MAQUILA EXTERNA (ARREGLOS Y SERIGRAFÍA)',
     color: '#8b5cf6',
-    items: []
+    items: [
+      { key: 'external_processes_capture', label: '1. FORMULARIO DE CAPTURA Y REGISTRO DE PEDIDOS' },
+      { key: 'external_processes_monitor', label: '2. MONITOR DE SEGUIMIENTO Y ESCANEO QR' },
+      { key: 'external_processes_costs', label: '3. VER Y EDITAR PRECIOS / COSTOS' },
+      { key: 'external_processes_reports', label: '4. EXPORTAR / DESCARGAR REPORTES DE AUDITORÍA' },
+    ]
   },
   {
     id: 'inventory',
@@ -126,7 +131,11 @@ const DEFAULT_WORKER_PERMISSIONS = {
   picking: false,
   monitor: false,
   inventory: false,
-  order_status: false,
+  external_processes: false,
+  external_processes_capture: false,
+  external_processes_monitor: false,
+  external_processes_costs: false,
+  external_processes_reports: false,
   maquila: false,
   maquila_hacienda: false,
   maquila_consumptions: false,
@@ -151,11 +160,14 @@ const ROLE_DEFAULT_PERMISSIONS = {
     picking: true,
     monitor: true,
     inventory: true,
-    order_status: true,
+    external_processes: true,
+    external_processes_capture: true,
+    external_processes_monitor: true,
   },
   sales: {
     ...DEFAULT_WORKER_PERMISSIONS,
-    order_status: true,
+    external_processes: true,
+    external_processes_monitor: true,
   },
   maquila: {
     ...DEFAULT_WORKER_PERMISSIONS,
@@ -474,9 +486,9 @@ export default function Admin() {
 
       let defaultPerms = { ...DEFAULT_WORKER_PERMISSIONS }
       if (newWorker.role === 'operator') {
-        defaultPerms = { ...defaultPerms, reception: true, picking: true, monitor: true, inventory: true, order_status: true }
+        defaultPerms = { ...defaultPerms, reception: true, picking: true, monitor: true, inventory: true, external_processes: true }
       } else if (newWorker.role === 'sales') {
-        defaultPerms = { ...defaultPerms, order_status: true }
+        defaultPerms = { ...defaultPerms, external_processes: true }
       } else if (newWorker.role === 'maquila') {
         defaultPerms = { ...defaultPerms, maquila: true, maquila_hacienda: true }
       }

@@ -1,0 +1,33 @@
+name: Scheduled Firebase Deploy (21:00 CST)
+
+on:
+  schedule:
+    # 03:00 UTC es equivalente a las 21:00 CST (UTC-6)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies and build app
+        run: |
+          npm ci
+          npm run build
+        working-directory: app
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AIRMAN_WMS_2026 }}
+          channelId: live
+          projectId: airman-wms-2026
+          entryPoint: app

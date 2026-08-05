@@ -15,7 +15,11 @@ const DEFAULT_PERMISSIONS = {
   picking: false,
   monitor: false,
   inventory: false,
-  order_status: false,
+  external_processes: false,
+  external_processes_capture: false,
+  external_processes_monitor: false,
+  external_processes_costs: false,
+  external_processes_reports: false,
   maquila: false,
   maquila_hacienda: false,
   maquila_consumptions: false,
@@ -71,7 +75,7 @@ export function AuthProvider({ children }) {
               name: fbUser.email.split('@')[0],
               role: 'master',
               warehouse: 'MATRIZ',
-              permissions: { reception: true, picking: true, inventory: true, admin: true, order_status: true },
+              permissions: { reception: true, picking: true, inventory: true, admin: true, external_processes: true, external_processes_capture: true, external_processes_monitor: true, external_processes_costs: true, external_processes_reports: true },
               createdAt: new Date().toISOString()
             }
             await setDoc(docRef, newProfile)
