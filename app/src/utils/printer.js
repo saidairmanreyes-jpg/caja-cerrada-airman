@@ -4,13 +4,16 @@
  */
 
 export const printLabel = async (data) => {
-  const { code, description, talla, quantity, qty, op, location, date, cliente, proceso, proveedor, section, isExternalProcess } = data;
+  const { code, description, talla, quantity, qty, op, location, date, cliente, proceso, proveedor, section, isExternalProcess, cajaNum, totalCajas } = data;
   const finalQty = quantity !== undefined ? quantity : qty;
 
   let commands = '';
 
   if (isExternalProcess || cliente) {
-    // TSPL commands for External Process Label (4.00 x 2.00 inches)
+    // Build box legend if multi-box
+    const boxLegend = (totalCajas && totalCajas > 1) ? `CAJA ${cajaNum} DE ${totalCajas}` : '';
+
+    // TSPL commands for External Process Label (4.00 x 2.00 inches) — NO COSTS
     commands = `
 SIZE 4.00, 2.00
 GAP 0.12, 0.00
@@ -21,9 +24,11 @@ TEXT 620, 20, "ROMAN.TTF", 0, 8, 8, "${date || new Date().toLocaleDateString('es
 QRCODE 530, 50, M, 6, A, 0, "${code}"
 TEXT 40, 55, "ROMAN.TTF", 0, 12, 12, "PEDIDO: #${op}"
 TEXT 260, 55, "ROMAN.TTF", 0, 12, 12, "CANT: ${finalQty} PZ"
-TEXT 40, 100, "ROMAN.TTF", 0, 10, 10, "CLIENTE: ${(cliente || '').substring(0, 26).toUpperCase()}"
-TEXT 40, 140, "ROMAN.TTF", 0, 10, 10, "PROCESO: ${(proceso || description || '').substring(0, 26).toUpperCase()}"
-TEXT 40, 180, "ROMAN.TTF", 0, 10, 10, "PROVEEDOR: ${(proveedor || location || '').substring(0, 26).toUpperCase()}"
+TEXT 40, 95, "ROMAN.TTF", 0, 10, 10, "CLIENTE: ${(cliente || '').substring(0, 26).toUpperCase()}"
+TEXT 40, 130, "ROMAN.TTF", 0, 10, 10, "PROCESO: ${(proceso || description || '').substring(0, 26).toUpperCase()}"
+TEXT 40, 165, "ROMAN.TTF", 0, 10, 10, "PROVEEDOR: ${(proveedor || location || '').substring(0, 22).toUpperCase()}"
+${boxLegend ? `TEXT 40, 200, "ROMAN.TTF", 0, 11, 11, "${boxLegend}"` : `TEXT 40, 200, "ROMAN.TTF", 0, 8, 8, "Cuidar la visibilidad de la etiqueta"`}
+TEXT 40, 225, "ROMAN.TTF", 0, 8, 8, "RECIBIDO (FIRMA): _______________________"
 TEXT 510, 230, "ROMAN.TTF", 0, 8, 8, "${code}"
 PRINT 1
 `;
@@ -81,7 +86,56 @@ PRINT 1
 };
 
 /**
+ * Prints N box labels for an external process record.
+ * Each label gets "CAJA X DE N" legend.
+ */
+export const printLabelMultiBox = async (data, totalCajas, onProgress) => {
+  try {
+    const port = await connectPrinter();
+    if (!port) return { success: false, error: 'No se pudo conectar a la impresora.' };
+
+    const encoder = new TextEncoder();
+    const writer = port.writable.getWriter();
+
+    for (let i = 1; i <= totalCajas; i++) {
+      const { code, op, quantity, qty, cliente, proceso, proveedor, section, date } = data;
+      const finalQty = quantity !== undefined ? quantity : qty;
+      const boxLegend = `CAJA ${i} DE ${totalCajas}`;
+
+      const commands = `
+SIZE 4.00, 2.00
+GAP 0.12, 0.00
+DIRECTION 1
+CLS
+TEXT 40, 20, "ROMAN.TTF", 0, 10, 10, "AIRMAN WMS - PROCESO EXTERNO (${section || 'MAQUILA'})"
+TEXT 620, 20, "ROMAN.TTF", 0, 8, 8, "${date || new Date().toLocaleDateString('es-MX')}"
+QRCODE 530, 50, M, 6, A, 0, "${code}"
+TEXT 40, 55, "ROMAN.TTF", 0, 12, 12, "PEDIDO: #${op}"
+TEXT 260, 55, "ROMAN.TTF", 0, 12, 12, "CANT: ${finalQty} PZ"
+TEXT 40, 95, "ROMAN.TTF", 0, 10, 10, "CLIENTE: ${(cliente || '').substring(0, 26).toUpperCase()}"
+TEXT 40, 130, "ROMAN.TTF", 0, 10, 10, "PROCESO: ${(proceso || '').substring(0, 26).toUpperCase()}"
+TEXT 40, 165, "ROMAN.TTF", 0, 10, 10, "PROVEEDOR: ${(proveedor || '').substring(0, 22).toUpperCase()}"
+TEXT 40, 200, "ROMAN.TTF", 0, 13, 13, "${boxLegend}"
+TEXT 40, 225, "ROMAN.TTF", 0, 8, 8, "RECIBIDO (FIRMA): _______________________"
+TEXT 510, 230, "ROMAN.TTF", 0, 8, 8, "${code}"
+PRINT 1
+`;
+      await writer.write(encoder.encode(commands));
+      if (onProgress) onProgress(Math.round((i / totalCajas) * 100));
+      await new Promise(r => setTimeout(r, 700));
+    }
+
+    writer.releaseLock();
+    return { success: true };
+  } catch (error) {
+    console.error('Multi-box printing error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Connects to the serial printer and returns the port.
+
  * Reuses existing port if available.
  */
 let sharedPort = null;

@@ -37,13 +37,18 @@ const PERMISSION_GROUPS = [
   {
     id: 'external_processes',
     label: 'PROCESOS EXTERNOS',
-    description: 'CONTROL DE MAQUILA EXTERNA (ARREGLOS Y SERIGRAFÍA)',
+    description: 'CONTROL DE MAQUILA EXTERNA (ARREGLOS, SERIGRAFÍA Y BORDADO)',
     color: '#8b5cf6',
     items: [
       { key: 'external_processes_capture', label: '1. FORMULARIO DE CAPTURA Y REGISTRO DE PEDIDOS' },
       { key: 'external_processes_monitor', label: '2. MONITOR DE SEGUIMIENTO Y ESCANEO QR' },
       { key: 'external_processes_costs', label: '3. VER Y EDITAR PRECIOS / COSTOS' },
       { key: 'external_processes_reports', label: '4. EXPORTAR / DESCARGAR REPORTES DE AUDITORÍA' },
+      { key: 'external_processes_arreglos', label: '5. CAPTURA Y PROCESAMIENTO DE ARREGLOS' },
+      { key: 'external_processes_serigrafia', label: '6. CAPTURA Y PROCESAMIENTO DE SERIGRAFÍA' },
+      { key: 'external_processes_bordado', label: '7. CAPTURA Y PROCESAMIENTO DE BORDADO' },
+      { key: 'external_processes_authorize', label: '8. 🔐 AUTORIZAR ASIGNACIÓN DE PROVEEDOR (DESIGNADOR)' },
+      { key: 'external_processes_manual_quote', label: '9. INGRESAR / AUTORIZAR COTIZACIÓN MANUAL' },
     ]
   },
   {
@@ -136,6 +141,11 @@ const DEFAULT_WORKER_PERMISSIONS = {
   external_processes_monitor: false,
   external_processes_costs: false,
   external_processes_reports: false,
+  external_processes_arreglos: false,
+  external_processes_serigrafia: false,
+  external_processes_bordado: false,
+  external_processes_authorize: false,
+  external_processes_manual_quote: false,
   maquila: false,
   maquila_hacienda: false,
   maquila_consumptions: false,
@@ -163,6 +173,11 @@ const ROLE_DEFAULT_PERMISSIONS = {
     external_processes: true,
     external_processes_capture: true,
     external_processes_monitor: true,
+    external_processes_arreglos: true,
+    external_processes_serigrafia: false,
+    external_processes_bordado: false,
+    external_processes_authorize: false,
+    external_processes_manual_quote: false,
   },
   sales: {
     ...DEFAULT_WORKER_PERMISSIONS,

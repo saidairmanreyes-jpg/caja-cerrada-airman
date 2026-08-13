@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { auth, db } from '../firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore'
 
 const AuthContext = createContext({})
 
@@ -20,6 +20,11 @@ const DEFAULT_PERMISSIONS = {
   external_processes_monitor: false,
   external_processes_costs: false,
   external_processes_reports: false,
+  external_processes_arreglos: true,
+  external_processes_serigrafia: false,
+  external_processes_bordado: false,
+  external_processes_authorize: false,
+  external_processes_manual_quote: false,
   maquila: false,
   maquila_hacienda: false,
   maquila_consumptions: false,
@@ -43,13 +48,20 @@ export function AuthProvider({ children }) {
   const [activeWarehouse, setActiveWarehouse] = useState(localStorage.getItem('activeWarehouse') || 'MATRIZ')
 
   useEffect(() => {
+    let profileUnsubscribe = null
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (profileUnsubscribe) {
+        profileUnsubscribe()
+        profileUnsubscribe = null
+      }
+
       if (fbUser) {
         setUser(fbUser)
-        try {
-          const docRef = doc(db, 'profiles', fbUser.uid)
-          const docSnap = await getDoc(docRef)
+        const docRef = doc(db, 'profiles', fbUser.uid)
 
+        // Set up real-time listener for profile changes (permissions, role, warehouse)
+        profileUnsubscribe = onSnapshot(docRef, async (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data()
             if (data.permissions) {
@@ -75,23 +87,35 @@ export function AuthProvider({ children }) {
               name: fbUser.email.split('@')[0],
               role: 'master',
               warehouse: 'MATRIZ',
-              permissions: { reception: true, picking: true, inventory: true, admin: true, external_processes: true, external_processes_capture: true, external_processes_monitor: true, external_processes_costs: true, external_processes_reports: true },
+              permissions: {
+                reception: true, picking: true, inventory: true, admin: true,
+                external_processes: true, external_processes_capture: true, external_processes_monitor: true,
+                external_processes_costs: true, external_processes_reports: true,
+                external_processes_arreglos: true, external_processes_serigrafia: true,
+                external_processes_bordado: true, external_processes_authorize: true,
+                external_processes_manual_quote: true
+              },
               createdAt: new Date().toISOString()
             }
             await setDoc(docRef, newProfile)
             setProfile(newProfile)
           }
-        } catch (e) {
-          console.error("Error al obtener/crear perfil en Firestore:", e)
-        }
+          setLoading(false)
+        }, (err) => {
+          console.error("Error al escuchar perfil en tiempo real:", err)
+          setLoading(false)
+        })
       } else {
         setUser(null)
         setProfile(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
-    return unsubscribe
+    return () => {
+      if (profileUnsubscribe) profileUnsubscribe()
+      unsubscribe()
+    }
   }, [])
 
   const changeWarehouse = (wh) => {
