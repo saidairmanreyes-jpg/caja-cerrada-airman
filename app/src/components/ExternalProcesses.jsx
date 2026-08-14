@@ -93,6 +93,13 @@ export default function ExternalProcesses() {
   const [pendingPrintRecord, setPendingPrintRecord] = useState(null)
   const [boxPrintProgress, setBoxPrintProgress] = useState(null) // 0-100
 
+  // Cancel process modal state
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [pendingCancelRecord, setPendingCancelRecord] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
+  const [cancelError, setCancelError] = useState(null)
+
   // Catalog feedback state
   const [catalogMsg, setCatalogMsg] = useState(null)
 
@@ -804,6 +811,96 @@ export default function ExternalProcesses() {
     }
   }
 
+  // ── Printer Click Handler with Authorization & Box Modal Validation ──
+  const handlePrinterClick = (record) => {
+    if (!record) return
+
+    if (record.status === 'CANCELADO') {
+      alert('⚠️ IMPRESIÓN RESTRINGIDA: Este pedido se encuentra CANCELADO y no se pueden generar etiquetas.')
+      return
+    }
+
+    // Regla de negocio: No permitir imprimir ni mostrar el pop-up de cajas si el autorizador no ha asignado proveedor y costo
+    if (record.status === 'PENDIENTE_ASIGNACION' || !record.proveedor_nombre || record.proveedor_nombre.trim() === '') {
+      alert('⚠️ IMPRESIÓN RESTRINGIDA: No se puede imprimir la etiqueta debido a que el usuario autorizador (Designador) aún no ha asignado un proveedor y su respectivo costo a este pedido.')
+      return
+    }
+
+    // Mostrar inmediatamente el pop-up preguntando "¿Cuántas cajas son?"
+    setPendingPrintRecord(record)
+    setBoxCount(1)
+    setShowBoxModal(true)
+  }
+
+  // ── Mandatory Cancellation Handlers ──
+  const handleOpenCancelModal = (record) => {
+    setPendingCancelRecord(record)
+    setCancelReason('')
+    setCancelError(null)
+    setShowCancelModal(true)
+  }
+
+  const handleConfirmCancel = async () => {
+    if (!pendingCancelRecord) return
+
+    if (!cancelReason.trim()) {
+      setCancelError('⚠️ El motivo de cancelación es ESTRICTAMENTE OBLIGATORIO.')
+      return
+    }
+
+    setCancelSubmitting(true)
+    setCancelError(null)
+
+    const nowIso = new Date().toISOString()
+    const cancelledByName = profile?.name || user?.email || 'USUARIO ALMACÉN'
+
+    const updates = {
+      status: 'CANCELADO',
+      motivo_cancelacion: cancelReason.trim(),
+      cancelled_by: cancelledByName,
+      cancelled_at: nowIso
+    }
+
+    try {
+      // 1. Update Supabase
+      try {
+        await supabase.from('external_processes').update(updates).eq('id', pendingCancelRecord.id)
+      } catch (sbErr) {
+        console.warn('Supabase cancel update note:', sbErr.message)
+      }
+
+      // 2. Update Firestore & add history entry
+      try {
+        await setDoc(doc(db, 'external_processes', pendingCancelRecord.id), updates, { merge: true })
+        await addDoc(collection(db, 'external_processes_history'), {
+          id: pendingCancelRecord.id,
+          pedido_num: pendingCancelRecord.pedido_num,
+          section: pendingCancelRecord.section,
+          status: 'CANCELADO',
+          motivo_cancelacion: cancelReason.trim(),
+          cancelled_by: cancelledByName,
+          cancelled_at: nowIso,
+          action: 'CANCELACION_ORDEN'
+        })
+      } catch (fbErr) {
+        console.warn('Firestore cancel sync note:', fbErr.message)
+      }
+
+      // 3. Update local state
+      setRecords(prev => prev.map(r => r.id === pendingCancelRecord.id ? { ...r, ...updates } : r))
+
+      // 4. Close modal
+      setShowCancelModal(false)
+      setPendingCancelRecord(null)
+      setCancelReason('')
+    } catch (err) {
+      console.error('Error cancelling order:', err)
+      setCancelError('❌ Error al procesar la cancelación: ' + err.message)
+    } finally {
+      setCancelSubmitting(false)
+    }
+  }
+
   // ── Box-count print handler ──
   const handleConfirmBoxPrint = async () => {
     if (!pendingPrintRecord) return
@@ -1491,9 +1588,11 @@ export default function ExternalProcesses() {
                 }}
               >
                 <option value="ALL">TODOS LOS ESTATUS</option>
-                <option value="PENDIENTE">PENDIENTE (CREADO)</option>
+                <option value="PENDIENTE_ASIGNACION">PENDIENTE DE ASIGNACIÓN</option>
+                <option value="PENDIENTE">PENDIENTE (AUTORIZADO)</option>
                 <option value="ENTREGADO_PROVEEDOR">ENTREGADO AL PROVEEDOR</option>
                 <option value="RECIBIDO">RECIBIDO (COMPLETADO)</option>
+                <option value="CANCELADO">CANCELADO</option>
               </select>
             </div>
 
@@ -1574,8 +1673,9 @@ export default function ExternalProcesses() {
                 </div>
               ) : (
                 filteredRecords.map(r => {
-                  const statusColor = r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : '#3b82f6'
-                  const statusText = r.status === 'ENTREGADO_PROVEEDOR' ? 'EN PROVEEDOR' : r.status
+                  const isCancelled = r.status === 'CANCELADO'
+                  const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#3b82f6'
+                  const statusText = isCancelled ? 'CANCELADO' : r.status === 'ENTREGADO_PROVEEDOR' ? 'EN PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
 
                   return (
                     <div
@@ -1584,12 +1684,13 @@ export default function ExternalProcesses() {
                         display: 'grid',
                         gridTemplateColumns: canSeeCosts ? '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1fr 1.2fr' : '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr',
                         padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
-                        background: 'rgba(255,255,255,0.01)', transition: 'background 0.2s'
+                        background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.2s',
+                        opacity: isCancelled ? 0.75 : 1
                       }}
                     >
                       {/* Pedido / Cliente */}
                       <div>
-                        <span style={{ fontSize: '0.95rem', color: '#ef4444', fontWeight: 1000, background: 'rgba(239,68,68,0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem' }}>
+                        <span style={{ fontSize: '0.95rem', color: isCancelled ? '#94a3b8' : '#ef4444', fontWeight: 1000, background: isCancelled ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', textDecoration: isCancelled ? 'line-through' : 'none' }}>
                           #{r.pedido_num}
                         </span>
                         <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1598,8 +1699,8 @@ export default function ExternalProcesses() {
                       </div>
 
                       {/* Proveedor */}
-                      <div style={{ fontSize: '0.85rem', color: 'white', fontWeight: 900, textTransform: 'uppercase' }}>
-                        {r.proveedor_nombre}
+                      <div style={{ fontSize: '0.85rem', color: r.proveedor_nombre ? 'white' : '#64748b', fontWeight: 900, textTransform: 'uppercase' }}>
+                        {r.proveedor_nombre || 'SIN ASIGNAR'}
                       </div>
 
                       {/* Piezas */}
@@ -1629,25 +1730,62 @@ export default function ExternalProcesses() {
 
                       {/* Costo (Solo si tiene permisos) */}
                       {canSeeCosts && (
-                        <div style={{ fontSize: '0.85rem', color: '#22c55e', fontWeight: 1000 }}>
+                        <div style={{ fontSize: '0.85rem', color: isCancelled ? '#94a3b8' : '#22c55e', fontWeight: 1000, textDecoration: isCancelled ? 'line-through' : 'none' }}>
                           ${(r.total_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </div>
                       )}
 
-                      {/* Estatus & Print action */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
-                          background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
-                          fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase'
-                        }}>
-                          {statusText}
-                        </span>
+                      {/* Estatus & Actions (Botón X y Botón Impresora) */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
+                            background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
+                            fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase'
+                          }}>
+                            {statusText}
+                          </span>
+                          {isCancelled && r.motivo_cancelacion && (
+                            <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
+                              Motivo: {r.motivo_cancelacion}
+                            </span>
+                          )}
+                        </div>
 
+                        {/* Botón de Cancelación (X) - Requerimiento 1 */}
+                        {!isCancelled && (
+                          <button
+                            onClick={() => handleOpenCancelModal(r)}
+                            title="CANCELAR PROCESO"
+                            style={{
+                              background: 'rgba(239,68,68,0.15)',
+                              border: '1px solid rgba(239,68,68,0.3)',
+                              color: '#ef4444',
+                              borderRadius: '0.4rem',
+                              padding: '0.35rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+
+                        {/* Botón de Impresión con validación y modal de cajas - Requerimiento 2 */}
                         <button
-                          onClick={() => { setSelectedLabelRecord(r); triggerLabelPrint(r); }}
-                          title="REIMPRIMIR ETIQUETA QR"
-                          style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', borderRadius: '0.4rem', padding: '0.35rem', cursor: 'pointer' }}
+                          onClick={() => handlePrinterClick(r)}
+                          title={(r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre) ? 'Requiere asignación de proveedor/costo por autorizador para imprimir' : 'IMPRIMIR ETIQUETA QR'}
+                          style={{
+                            background: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                            border: 'none',
+                            color: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? '#475569' : '#94a3b8',
+                            borderRadius: '0.4rem',
+                            padding: '0.35rem',
+                            cursor: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'not-allowed' : 'pointer'
+                          }}
                         >
                           <Printer size={14} />
                         </button>
@@ -1861,6 +1999,88 @@ export default function ExternalProcesses() {
                     color: assignProveedor ? 'white' : '#475569', fontWeight: 1000, fontSize: '0.85rem', textTransform: 'uppercase'
                   }}>
                   {assignSaving ? '⏳ GUARDANDO...' : '✅ CONFIRMAR ASIGNACIÓN'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: CANCELACIÓN OBLIGATORIA CON MOTIVO ─── */}
+      {showCancelModal && pendingCancelRecord && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 160, padding: '1rem'
+        }}>
+          <div style={{
+            background: '#0f172a', border: '2px solid #ef4444', borderRadius: '1.5rem', padding: '2rem', width: '100%', maxWidth: '440px',
+            boxShadow: '0 25px 50px -12px rgba(239,68,68,0.4)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 1000, color: '#f87171', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertTriangle size={20} color="#ef4444" /> CANCELACIÓN DE PROCESO
+              </h3>
+              <button onClick={() => { setShowCancelModal(false); setPendingCancelRecord(null); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '1rem', padding: '0.875rem', marginBottom: '1.25rem', fontSize: '0.78rem', color: '#94a3b8' }}>
+              <p><strong style={{ color: 'white' }}>Pedido:</strong> #{pendingCancelRecord.pedido_num} — {pendingCancelRecord.cliente}</p>
+              <p style={{ marginTop: '0.3rem' }}><strong style={{ color: 'white' }}>Proceso(s):</strong> {pendingCancelRecord.proceso_nombre}</p>
+              <p style={{ marginTop: '0.3rem' }}><strong style={{ color: 'white' }}>Piezas:</strong> {pendingCancelRecord.total_piezas} PZ</p>
+              <p style={{ marginTop: '0.3rem' }}><strong style={{ color: 'white' }}>Proveedor:</strong> {pendingCancelRecord.proveedor_nombre || 'Sin asignar'}</p>
+            </div>
+
+            {cancelError && (
+              <div style={{
+                padding: '0.75rem', borderRadius: '0.75rem', marginBottom: '1rem',
+                fontSize: '0.78rem', fontWeight: 900, background: 'rgba(239,68,68,0.15)',
+                border: '1px solid rgba(239,68,68,0.3)', color: '#f87171'
+              }}>
+                {cancelError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>
+                  MOTIVO DE LA CANCELACIÓN (OBLIGATORIO) *
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Ingrese obligatoriamente la razón detallada de la cancelación..."
+                  value={cancelReason}
+                  onChange={e => { setCancelReason(e.target.value); setCancelError(null); }}
+                  autoFocus
+                  style={{
+                    width: '100%', background: 'rgba(2,6,23,0.9)', border: '2px solid rgba(239,68,68,0.4)', borderRadius: '0.75rem',
+                    padding: '0.65rem 0.875rem', color: 'white', fontWeight: 700, fontSize: '0.85rem', outline: 'none', resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowCancelModal(false); setPendingCancelRecord(null); }}
+                  style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', fontWeight: 900, fontSize: '0.8rem', border: 'none', cursor: 'pointer', textTransform: 'uppercase' }}
+                >
+                  VOLVER
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancel}
+                  disabled={cancelSubmitting || !cancelReason.trim()}
+                  style={{
+                    flex: 2, padding: '0.75rem', borderRadius: '0.75rem', border: 'none',
+                    cursor: (cancelSubmitting || !cancelReason.trim()) ? 'not-allowed' : 'pointer',
+                    background: cancelReason.trim() ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'rgba(255,255,255,0.05)',
+                    color: cancelReason.trim() ? 'white' : '#475569', fontWeight: 1000, fontSize: '0.85rem', textTransform: 'uppercase',
+                    boxShadow: cancelReason.trim() ? '0 4px 15px rgba(239,68,68,0.4)' : 'none'
+                  }}
+                >
+                  {cancelSubmitting ? '⏳ CANCELANDO...' : '🚫 CONFIRMAR CANCELACIÓN'}
                 </button>
               </div>
             </div>

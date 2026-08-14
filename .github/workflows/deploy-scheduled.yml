@@ -1,6 +1,10 @@
 name: Scheduled Firebase Deploy (21:00 CST)
 
 on:
+  push:
+    branches:
+      - main
+      - master
   schedule:
     # 03:00 UTC es equivalente a las 21:00 CST (UTC-6)
     - cron: '0 3 * * *'
