@@ -944,6 +944,7 @@ export default function ExternalProcesses() {
       return
     }
 
+    // AJUSTE: El detalle del reporte incluye TODOS los registros (incluyendo CANCELADOS) para trazabilidad completa
     const reportData = filteredRecords.map(r => {
       const row = {
         'SECCIÓN': r.section,
@@ -957,11 +958,16 @@ export default function ExternalProcesses() {
         'FECHA SALIDA (1er Escaneo)': r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : 'PENDIENTE',
         'FECHA RECEPCIÓN (2do Escaneo)': r.fecha_recepcion ? new Date(r.fecha_recepcion).toLocaleString() : 'PENDIENTE',
         'USUARIO RECEPCIÓN': r.user_recepcion || '—',
+        'MOTIVO CANCELACIÓN': r.motivo_cancelacion || '—',
+        'CANCELADO POR': r.cancelled_by || '—',
+        'FECHA CANCELACIÓN': r.cancelled_at ? new Date(r.cancelled_at).toLocaleString() : '—',
       }
 
       if (canSeeCosts) {
         row['COSTO UNITARIO PROM ($)'] = r.unit_cost || 0
-        row['TOTAL FACTURABLE ($)'] = r.total_cost || 0
+        // AJUSTE: Los registros CANCELADOS se muestran con $0 en el facturable para que el total del Excel sea correcto
+        row['TOTAL FACTURABLE ($)'] = r.status === 'CANCELADO' ? 0 : (r.total_cost || 0)
+        row['COSTO ORIGINAL ($)'] = r.total_cost || 0
       }
 
       return row
@@ -978,15 +984,20 @@ export default function ExternalProcesses() {
       XLSX.utils.book_append_sheet(workbook, worksheet, `Conciliación_${activeSection}`)
 
       if (canSeeCosts) {
+        // AJUSTE: El resumen por proveedor excluye CANCELADOS del total monetario
         const summaryBySupplier = {}
-        reportData.forEach(r => {
-          const sup = r['PROVEEDOR']
+        filteredRecords.forEach(r => {
+          const sup = r.proveedor_nombre || '(SIN ASIGNAR)'
           if (!summaryBySupplier[sup]) {
-            summaryBySupplier[sup] = { 'PROVEEDOR': sup, 'PEDIDOS': 0, 'TOTAL PIEZAS': 0, 'MONTO TOTAL ($)': 0 }
+            summaryBySupplier[sup] = { 'PROVEEDOR': sup, 'PEDIDOS TOTALES': 0, 'PEDIDOS CANCELADOS': 0, 'TOTAL PIEZAS': 0, 'MONTO FACTURABLE ($)': 0 }
           }
-          summaryBySupplier[sup]['PEDIDOS'] += 1
-          summaryBySupplier[sup]['TOTAL PIEZAS'] += r['PIEZAS TOTALES']
-          summaryBySupplier[sup]['MONTO TOTAL ($)'] += r['TOTAL FACTURABLE ($)'] || 0
+          summaryBySupplier[sup]['PEDIDOS TOTALES'] += 1
+          if (r.status === 'CANCELADO') {
+            summaryBySupplier[sup]['PEDIDOS CANCELADOS'] += 1
+          } else {
+            summaryBySupplier[sup]['TOTAL PIEZAS'] += r.total_piezas || 0
+            summaryBySupplier[sup]['MONTO FACTURABLE ($)'] += r.total_cost || 0
+          }
         })
 
         const summarySheet = XLSX.utils.json_to_sheet(Object.values(summaryBySupplier))
@@ -1025,7 +1036,10 @@ export default function ExternalProcesses() {
   // Summary Metrics
   const totalOrdersCount = filteredRecords.length
   const totalPiecesCount = filteredRecords.reduce((acc, curr) => acc + (curr.total_piezas || 0), 0)
-  const totalCostSum = filteredRecords.reduce((acc, curr) => acc + (curr.total_cost || 0), 0)
+  // AJUSTE: Los procesos CANCELADOS se excluyen del monto total facturable en pantalla
+  const totalCostSum = filteredRecords
+    .filter(r => r.status !== 'CANCELADO')
+    .reduce((acc, curr) => acc + (curr.total_cost || 0), 0)
 
   // Render Full Restricted Access Banner if user has neither capture nor monitor access
   if (!canCapture && !canMonitor) {
