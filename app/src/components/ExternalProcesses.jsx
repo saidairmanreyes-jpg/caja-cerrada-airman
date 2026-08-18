@@ -553,7 +553,7 @@ export default function ExternalProcesses() {
       unit_cost: unitCostAvg,
       total_cost: totalCostOrder,
       procesos_detalle: JSON.stringify(addedProcesses),
-      observaciones: (formData.observaciones || '').trim().substring(0, 50),
+      observaciones: (formData.observaciones || '').trim().substring(0, 250),
       status: initialStatus,
       warehouse: activeWarehouse || 'MATRIZ',
       created_by_uid: user?.uid || '',
@@ -590,7 +590,7 @@ export default function ExternalProcesses() {
             cliente: formData.cliente.trim(),
             proceso_nombre: procesoNombreSummary,
             total_piezas: totalPiezasOrder,
-            observaciones: (formData.observaciones || '').trim().substring(0, 50),
+            observaciones: (formData.observaciones || '').trim().substring(0, 250),
             section: activeSection,
             created_at: new Date().toISOString(),
             read: false,
@@ -1537,22 +1537,22 @@ export default function ExternalProcesses() {
                 </div>
               )}
 
-              {/* NUEVO CAMPO: OBSERVACIONES (Requerimiento 3 - Máx 50 caracteres) */}
+              {/* CAMPO: OBSERVACIONES (Instrucciones completas al proveedor) */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
                   <label style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase' }}>
                     OBSERVACIONES (INSTRUCCIONES AL PROVEEDOR)
                   </label>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: (formData.observaciones || '').length >= 45 ? '#f59e0b' : '#64748b' }}>
-                    {(formData.observaciones || '').length}/50 MÁX
+                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: (formData.observaciones || '').length >= 240 ? '#f59e0b' : '#64748b' }}>
+                    {(formData.observaciones || '').length}/250 MÁX
                   </span>
                 </div>
                 <input
                   type="text"
                   placeholder="Ej: Bastilla 2cm / Doble costura / Hilo azul..."
-                  maxLength={50}
+                  maxLength={250}
                   value={formData.observaciones || ''}
-                  onChange={e => setFormData({ ...formData, observaciones: e.target.value.slice(0, 50) })}
+                  onChange={e => setFormData({ ...formData, observaciones: e.target.value.slice(0, 250) })}
                   style={{
                     width: '100%', background: 'rgba(2,6,23,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
                     padding: '0.65rem 0.875rem', color: 'white', fontWeight: 800, fontSize: '0.85rem', outline: 'none'
@@ -1960,163 +1960,174 @@ export default function ExternalProcesses() {
             background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.5rem',
             overflow: 'hidden', backdropFilter: 'blur(12px)'
           }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: canSeeCosts ? '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1fr 1.2fr' : '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr',
-              padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
-              fontSize: '0.65rem', fontWeight: 1000, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em'
-            }}>
-              <div>PEDIDO / CLIENTE</div>
-              <div>PROVEEDOR</div>
-              <div>PIEZAS</div>
-              <div>PROCESO(S)</div>
-              <div>SALIDA (1er SCAN)</div>
-              <div>RECEPCIÓN (2do SCAN)</div>
-              <div>USUARIO RECEPTOR</div>
-              {canSeeCosts && <div>TOTAL FACTURABLE</div>}
-              <div>ESTATUS / ETIQUETA</div>
-            </div>
-
-            <div className="custom-scrollbar" style={{ maxHeight: '550px', overflowY: 'auto' }}>
-              {loading ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                  <div className="spinner" style={{ width: 24, height: 24, border: '2px solid #ef4444', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 1rem' }} />
-                  CARGANDO PEDIDOS DE PROCESOS EXTERNOS...
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: canSeeCosts ? '1150px' : '1050px' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: canSeeCosts 
+                    ? 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 2.3fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)' 
+                    : 'minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 2.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1.4fr)',
+                  gap: '0.75rem',
+                  alignItems: 'center',
+                  padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  fontSize: '0.65rem', fontWeight: 1000, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em'
+                }}>
+                  <div style={{ minWidth: 0 }}>PEDIDO / CLIENTE</div>
+                  <div style={{ minWidth: 0 }}>PROVEEDOR</div>
+                  <div style={{ minWidth: 0 }}>PIEZAS</div>
+                  <div style={{ minWidth: 0 }}>PROCESO(S)</div>
+                  <div style={{ minWidth: 0 }}>SALIDA (1er SCAN)</div>
+                  <div style={{ minWidth: 0 }}>RECEPCIÓN (2do SCAN)</div>
+                  <div style={{ minWidth: 0 }}>USUARIO RECEPTOR</div>
+                  {canSeeCosts && <div style={{ minWidth: 0 }}>TOTAL FACTURABLE</div>}
+                  <div style={{ minWidth: 0 }}>ESTATUS / ETIQUETA</div>
                 </div>
-              ) : filteredRecords.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', fontWeight: 800 }}>
-                  NO SE ENCONTRARON PEDIDOS REGISTRADOS EN ESTA SECCIÓN ({activeSection}).
-                </div>
-              ) : (
-                filteredRecords.map(r => {
-                  const isCancelled = r.status === 'CANCELADO'
-                  const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#3b82f6'
-                  const statusText = isCancelled ? 'CANCELADO' : r.status === 'RECIBIDO' ? 'RECIBIDO EN ALMACÉN' : r.status === 'ENTREGADO_PROVEEDOR' ? 'ENTREGADO AL PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
 
-                  return (
-                    <div
-                      key={r.id}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: canSeeCosts ? '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1fr 1.2fr' : '1.2fr 1fr 1fr 2fr 1.2fr 1.2fr 1.2fr 1.2fr',
-                        padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
-                        background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.2s',
-                        opacity: isCancelled ? 0.75 : 1
-                      }}
-                    >
-                      {/* Pedido / Cliente */}
-                      <div>
-                        <span style={{ fontSize: '0.95rem', color: isCancelled ? '#94a3b8' : '#ef4444', fontWeight: 1000, background: isCancelled ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                          #{r.pedido_num}
-                        </span>
-                        <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginTop: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {r.cliente}
-                        </div>
-                      </div>
+                <div className="custom-scrollbar" style={{ maxHeight: '550px', overflowY: 'auto' }}>
+                  {loading ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                      <div className="spinner" style={{ width: 24, height: 24, border: '2px solid #ef4444', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 1rem' }} />
+                      CARGANDO PEDIDOS DE PROCESOS EXTERNOS...
+                    </div>
+                  ) : filteredRecords.length === 0 ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', fontWeight: 800 }}>
+                      NO SE ENCONTRARON PEDIDOS REGISTRADOS EN ESTA SECCIÓN ({activeSection}).
+                    </div>
+                  ) : (
+                    filteredRecords.map(r => {
+                      const isCancelled = r.status === 'CANCELADO'
+                      const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#3b82f6'
+                      const statusText = isCancelled ? 'CANCELADO' : r.status === 'RECIBIDO' ? 'RECIBIDO EN ALMACÉN' : r.status === 'ENTREGADO_PROVEEDOR' ? 'ENTREGADO AL PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
 
-                      {/* Proveedor */}
-                      <div style={{ fontSize: '0.85rem', color: r.proveedor_nombre ? 'white' : '#64748b', fontWeight: 900, textTransform: 'uppercase' }}>
-                        {r.proveedor_nombre || 'SIN ASIGNAR'}
-                      </div>
-
-                      {/* Piezas */}
-                      <div style={{ fontSize: '0.95rem', color: 'white', fontWeight: 1000 }}>
-                        {r.total_piezas} <span style={{ fontSize: '0.7rem', color: '#64748b' }}>PZ</span>
-                      </div>
-
-                      {/* Proceso */}
-                      <div>
-                        <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase' }}>
-                          {r.proceso_nombre}
-                        </div>
-                        {r.observaciones && (
-                          <div style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 800, marginTop: '2px', fontStyle: 'italic' }}>
-                            Obs: {r.observaciones}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Fecha Salida (1er Escaneo) */}
-                      <div style={{ fontSize: '0.75rem', color: r.fecha_salida ? '#f59e0b' : '#64748b', fontWeight: 900 }}>
-                        {r.fecha_salida ? new Date(r.fecha_salida).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                      </div>
-
-                      {/* Fecha Recepción (2do Escaneo) */}
-                      <div style={{ fontSize: '0.75rem', color: r.fecha_recepcion ? '#22c55e' : '#64748b', fontWeight: 900 }}>
-                        {r.fecha_recepcion ? new Date(r.fecha_recepcion).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                      </div>
-
-                      {/* Usuario Receptor */}
-                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 900, textTransform: 'uppercase' }}>
-                        {r.user_recepcion || '—'}
-                      </div>
-
-                      {/* Costo (Solo si tiene permisos) */}
-                      {canSeeCosts && (
-                        <div style={{ fontSize: '0.85rem', color: isCancelled ? '#94a3b8' : '#22c55e', fontWeight: 1000, textDecoration: isCancelled ? 'line-through' : 'none' }}>
-                          ${(r.total_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                        </div>
-                      )}
-
-                      {/* Estatus & Actions (Botón X y Botón Impresora) */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
-                            background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
-                            fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase'
-                          }}>
-                            {statusText}
-                          </span>
-                          {isCancelled && r.motivo_cancelacion && (
-                            <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
-                              Motivo: {r.motivo_cancelacion}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Botón de Cancelación (X) - Requerimiento 1 */}
-                        {!isCancelled && (
-                          <button
-                            onClick={() => handleOpenCancelModal(r)}
-                            title="CANCELAR PROCESO"
-                            style={{
-                              background: 'rgba(239,68,68,0.15)',
-                              border: '1px solid rgba(239,68,68,0.3)',
-                              color: '#ef4444',
-                              borderRadius: '0.4rem',
-                              padding: '0.35rem',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-
-                        {/* Botón de Impresión con validación y modal de cajas - Requerimiento 2 */}
-                        <button
-                          onClick={() => handlePrinterClick(r)}
-                          title={(r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre) ? 'Requiere asignación de proveedor/costo por autorizador para imprimir' : 'IMPRIMIR ETIQUETA QR'}
+                      return (
+                        <div
+                          key={r.id}
                           style={{
-                            background: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
-                            border: 'none',
-                            color: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? '#475569' : '#94a3b8',
-                            borderRadius: '0.4rem',
-                            padding: '0.35rem',
-                            cursor: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'not-allowed' : 'pointer'
+                            display: 'grid',
+                            gridTemplateColumns: canSeeCosts 
+                              ? 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 2.3fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)' 
+                              : 'minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 2.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1.4fr)',
+                            gap: '0.75rem',
+                            padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
+                            background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.2s',
+                            opacity: isCancelled ? 0.75 : 1
                           }}
                         >
-                          <Printer size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
+                          {/* Pedido / Cliente */}
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ fontSize: '0.95rem', color: isCancelled ? '#94a3b8' : '#ef4444', fontWeight: 1000, background: isCancelled ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', textDecoration: isCancelled ? 'line-through' : 'none', display: 'inline-block' }}>
+                              #{r.pedido_num}
+                            </span>
+                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginTop: '0.25rem', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.2 }}>
+                              {r.cliente}
+                            </div>
+                          </div>
+
+                          {/* Proveedor */}
+                          <div style={{ minWidth: 0, fontSize: '0.85rem', color: r.proveedor_nombre ? 'white' : '#64748b', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
+                            {r.proveedor_nombre || 'SIN ASIGNAR'}
+                          </div>
+
+                          {/* Piezas */}
+                          <div style={{ minWidth: 0, fontSize: '0.95rem', color: 'white', fontWeight: 1000 }}>
+                            {r.total_piezas} <span style={{ fontSize: '0.7rem', color: '#64748b' }}>PZ</span>
+                          </div>
+
+                          {/* Proceso */}
+                          <div style={{ minWidth: 0, paddingRight: '0.25rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.35 }}>
+                              {r.proceso_nombre}
+                            </div>
+                            {r.observaciones && (
+                              <div style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 800, marginTop: '4px', fontStyle: 'italic', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
+                                Obs: {r.observaciones}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Fecha Salida (1er Escaneo) */}
+                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: r.fecha_salida ? '#f59e0b' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
+                            {r.fecha_salida ? new Date(r.fecha_salida).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </div>
+
+                          {/* Fecha Recepción (2do Escaneo) */}
+                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: r.fecha_recepcion ? '#22c55e' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
+                            {r.fecha_recepcion ? new Date(r.fecha_recepcion).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </div>
+
+                          {/* Usuario Receptor */}
+                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
+                            {r.user_recepcion || '—'}
+                          </div>
+
+                          {/* Costo (Solo si tiene permisos) */}
+                          {canSeeCosts && (
+                            <div style={{ minWidth: 0, fontSize: '0.85rem', color: isCancelled ? '#94a3b8' : '#22c55e', fontWeight: 1000, textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                              ${(r.total_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                            </div>
+                          )}
+
+                          {/* Estatus & Actions (Botón X y Botón Impresora) */}
+                          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
+                            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
+                                background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
+                                fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase', whiteSpace: 'nowrap'
+                              }}>
+                                {statusText}
+                              </span>
+                              {isCancelled && r.motivo_cancelacion && (
+                                <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
+                                  Motivo: {r.motivo_cancelacion}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Botón de Cancelación (X) - Requerimiento 1 */}
+                            {!isCancelled && (
+                              <button
+                                onClick={() => handleOpenCancelModal(r)}
+                                title="CANCELAR PROCESO"
+                                style={{
+                                  background: 'rgba(239,68,68,0.15)',
+                                  border: '1px solid rgba(239,68,68,0.3)',
+                                  color: '#ef4444',
+                                  borderRadius: '0.4rem',
+                                  padding: '0.35rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+
+                            {/* Botón de Impresión con validación y modal de cajas - Requerimiento 2 */}
+                            <button
+                              onClick={() => handlePrinterClick(r)}
+                              title={(r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre) ? 'Requiere asignación de proveedor/costo por autorizador para imprimir' : 'IMPRIMIR ETIQUETA QR'}
+                              style={{
+                                background: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                                border: 'none',
+                                color: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? '#475569' : '#94a3b8',
+                                borderRadius: '0.4rem',
+                                padding: '0.35rem',
+                                cursor: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              <Printer size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2716,7 +2727,7 @@ export default function ExternalProcesses() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: '1rem'
         }}>
           <div style={{
-            background: 'white', color: 'black', borderRadius: '1.5rem', padding: '2rem', width: '100%', maxWidth: '450px', textAlign: 'center',
+            background: 'white', color: 'black', borderRadius: '1.5rem', padding: '1.75rem', width: '100%', maxWidth: '560px', textAlign: 'center',
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)'
           }}>
             <div style={{ borderBottom: '2px solid black', paddingBottom: '0.75rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2724,63 +2735,83 @@ export default function ExternalProcesses() {
               <button onClick={() => setSelectedLabelRecord(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 900 }}>✕</button>
             </div>
 
-            {/* Label Print Area (Structured 4" x 2" proportions) */}
+            {/* Label Print Area (Standard 150mm x 100mm Layout) */}
             <div id="printable-label-content" style={{
               width: '100%',
               boxSizing: 'border-box',
-              padding: '0.6rem 0.8rem',
+              padding: '1rem 1.25rem',
               border: '2px dashed #94a3b8',
               borderRadius: '0.75rem',
               background: '#ffffff',
               color: '#000000',
-              fontFamily: 'system-ui, -apple-system, sans-serif'
+              fontFamily: 'Arial, sans-serif',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              textAlign: 'left'
             }}>
               {/* Header Bar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', paddingBottom: '3px', marginBottom: '6px' }}>
-                <span style={{ fontWeight: 1000, fontSize: '9pt', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '3.5pt solid #000', paddingBottom: '3px', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 950, fontSize: '13pt', textTransform: 'uppercase', letterSpacing: '0.3pt' }}>
                   AIRMAN WMS - PROCESO EXTERNO ({selectedLabelRecord.section})
                 </span>
-                <span style={{ fontWeight: 800, fontSize: '8pt' }}>
+                <span style={{ fontWeight: 800, fontSize: '11pt', color: '#000' }}>
                   {new Date(selectedLabelRecord.created_at).toLocaleDateString('es-MX')}
                 </span>
               </div>
 
-              {/* Grid Body: Left 62% details + Right 38% QR */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Grid Body: Left details + Right QR */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flex: 1 }}>
                 
                 {/* Left Column: Operator Captured Information */}
-                <div style={{ width: '62%', display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '12pt', fontWeight: 1000, color: '#000' }}>PEDIDO: #{selectedLabelRecord.pedido_num}</span>
-                    <span style={{ fontSize: '10pt', fontWeight: 900, color: '#000' }}>({selectedLabelRecord.total_piezas} PZ)</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
+                    <span style={{ fontSize: '15pt', fontWeight: 1000, color: '#000', letterSpacing: '-0.02em' }}>
+                      PEDIDO: #{selectedLabelRecord.pedido_num}
+                    </span>
+                    <span style={{ fontSize: '13pt', fontWeight: 900, color: '#000' }}>
+                      ({selectedLabelRecord.total_piezas} PZ)
+                    </span>
                   </div>
 
-                  <div style={{ fontSize: '8.5pt', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <b>CLIENTE:</b> <span style={{ fontWeight: 900, textTransform: 'uppercase' }}>{selectedLabelRecord.cliente}</span>
+                  <div style={{ fontSize: '10.5pt', lineHeight: 1.25, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                    <b style={{ fontWeight: 900 }}>CLIENTE:</b> <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{selectedLabelRecord.cliente}</span>
                   </div>
 
-                  <div style={{ fontSize: '8.5pt', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <b>PROCESO:</b> <span style={{ fontWeight: 900, textTransform: 'uppercase' }}>{selectedLabelRecord.proceso_nombre}</span>
+                  <div style={{ fontSize: '10.5pt', lineHeight: 1.25, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                    <b style={{ fontWeight: 900 }}>PROCESO:</b> <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{selectedLabelRecord.proceso_nombre}</span>
                   </div>
 
-                  <div style={{ fontSize: '8.5pt', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <b>PROVEEDOR:</b> <span style={{ fontWeight: 900, textTransform: 'uppercase' }}>{selectedLabelRecord.proveedor_nombre}</span>
+                  <div style={{ fontSize: '10.5pt', lineHeight: 1.25, wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                    <b style={{ fontWeight: 900 }}>PROVEEDOR:</b> <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>{selectedLabelRecord.proveedor_nombre || 'SIN ASIGNAR'}</span>
                   </div>
 
-                  {/* Observaciones (Requerimiento 3 y 4 - Máx 50 carácteres, ubicación secundaria no invasiva) */}
+                  {/* Observaciones (Multi-línea completo sin corte ni puntos suspensivos) */}
                   {selectedLabelRecord.observaciones && (
-                    <div style={{ fontSize: '7.5pt', lineHeight: 1.15, color: '#0f172a', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '1px 4px', borderRadius: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <b>OBS:</b> <span style={{ fontWeight: 800 }}>{selectedLabelRecord.observaciones}</span>
+                    <div style={{
+                      fontSize: '9.5pt',
+                      lineHeight: 1.3,
+                      color: '#000',
+                      background: '#f8fafc',
+                      border: '1.5pt solid #000',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      whiteSpace: 'normal',
+                      marginTop: '2px'
+                    }}>
+                      <b style={{ fontWeight: 900 }}>OBS:</b> <span style={{ fontWeight: 700 }}>{selectedLabelRecord.observaciones}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Right Column: Unique QR Code & ID */}
-                <div style={{ width: '35%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '120px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ background: '#ffffff', padding: '2px', borderRadius: '4px' }}>
-                    <QRCodeSVG value={selectedLabelRecord.id} size={78} level="M" includeMargin={true} />
+                    <QRCodeSVG value={selectedLabelRecord.id} size={105} level="M" includeMargin={false} />
                   </div>
-                  <span style={{ fontSize: '6.5pt', fontWeight: 1000, marginTop: '2px', letterSpacing: '-0.02em', textAlign: 'center' }}>
+                  <span style={{ fontSize: '7.5pt', fontWeight: 900, marginTop: '3px', letterSpacing: '-0.02em', textAlign: 'center' }}>
                     {selectedLabelRecord.id}
                   </span>
                 </div>
@@ -2788,12 +2819,12 @@ export default function ExternalProcesses() {
               </div>
 
               {/* Safety Legend & Supplier Signature Line */}
-              <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px solid #000', display: 'flex', flexDirection: 'column', gap: '3px', textAlign: 'left' }}>
-                <div style={{ fontSize: '7pt', fontWeight: 1000, color: '#000', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+              <div style={{ marginTop: '8px', paddingTop: '5px', borderTop: '2.5pt solid #000', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '4px' }}>
+                <div style={{ fontSize: '8.5pt', fontWeight: 900, color: '#000', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
                   ⚠️ CUIDAR LA VISIBILIDAD DE LA ETIQUETA
                 </div>
-                <div style={{ fontSize: '7.5pt', fontWeight: 900, color: '#000' }}>
-                  RECIBIDO (FIRMA): __________________________________
+                <div style={{ fontSize: '9pt', fontWeight: 900, color: '#000' }}>
+                  RECIBIDO (FIRMA): _________________________
                 </div>
               </div>
             </div>
@@ -2841,13 +2872,13 @@ export default function ExternalProcesses() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); borderRadius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(239,68,68,0.2); }
         @page {
-          size: 4in 2in;
+          size: 150mm 100mm;
           margin: 0;
         }
         @media print {
           html, body {
-            width: 4in !important;
-            height: 2in !important;
+            width: 150mm !important;
+            height: 100mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
@@ -2858,17 +2889,20 @@ export default function ExternalProcesses() {
           body * { visibility: hidden !important; }
           #printable-label-content, #printable-label-content * { visibility: visible !important; }
           #printable-label-content {
-            position: fixed !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: 4in !important;
-            height: 2in !important;
+            width: 150mm !important;
+            height: 100mm !important;
             margin: 0 !important;
-            padding: 0.1in 0.15in !important;
+            padding: 5mm 8mm !important;
             box-sizing: border-box !important;
             border: none !important;
             background: white !important;
             color: black !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
             overflow: hidden !important;
           }
         }
