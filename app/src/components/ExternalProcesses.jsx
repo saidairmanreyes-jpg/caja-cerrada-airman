@@ -64,6 +64,71 @@ export default function ExternalProcesses() {
     } catch (e) {}
   }
 
+  // Deduplicate array of records by unique ID
+  const deduplicateRecords = (arr) => {
+    if (!Array.isArray(arr)) return []
+    const map = new Map()
+    for (const item of arr) {
+      if (item && item.id) {
+        if (!map.has(item.id)) {
+          map.set(item.id, item)
+        } else {
+          map.set(item.id, { ...map.get(item.id), ...item })
+        }
+      }
+    }
+    return Array.from(map.values())
+  }
+
+  // Normalizador universal de códigos escaneados (corrige mapeo de teclado de pistolas en Windows Español/LATAM: ' -> -)
+  const normalizeScannedCode = (input) => {
+    if (!input) return { raw: '', clean: '', normalizedId: '', pedidoNum: '', variations: [] }
+
+    const raw = String(input).trim().replace(/[\r\n\t]/g, '')
+
+    // 1. Convertir comillas/apóstrofes, acentos, guiones bajos o espacios generados por teclado físico a guion estándar '-'
+    const clean = raw
+      .replace(/['’`´_]/g, '-')
+      .replace(/\s+/g, '-')
+      .toUpperCase()
+
+    // 2. Extraer secciones, número de pedido y sufijos (ej: EXT-ARR-26929-501 o EXT'ARR'26929'501)
+    let normalizedId = clean
+    let pedidoNum = ''
+
+    const extMatch = clean.match(/EXT-?(ARR|SER|BOR|MAQ)?-?([A-Z0-9]+)(?:-?(\d+))?/i)
+    if (extMatch) {
+      const sec = extMatch[1] ? extMatch[1].toUpperCase() : ''
+      const ped = extMatch[2]
+      const suf = extMatch[3]
+      pedidoNum = ped
+      if (sec && ped && suf) {
+        normalizedId = `EXT-${sec}-${ped}-${suf}`
+      } else if (sec && ped) {
+        normalizedId = `EXT-${sec}-${ped}`
+      }
+    } else {
+      const numOnly = clean.replace(/[^0-9]/g, '')
+      if (numOnly) {
+        pedidoNum = numOnly
+      }
+    }
+
+    const variations = Array.from(new Set([
+      raw,
+      raw.toUpperCase(),
+      clean,
+      clean.toUpperCase(),
+      normalizedId,
+      normalizedId.toUpperCase(),
+      pedidoNum,
+      raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+      clean.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    ])).filter(Boolean)
+
+    return { raw, clean, normalizedId, pedidoNum, variations }
+  }
+
   // Form state for order header
   const [formData, setFormData] = useState({
     pedido_num: '',
@@ -207,7 +272,7 @@ export default function ExternalProcesses() {
         .order('created_at', { ascending: false })
       
       if (!error && data && data.length > 0) {
-        setRecords(data)
+        setRecords(deduplicateRecords(data))
         return
       }
 
@@ -216,7 +281,7 @@ export default function ExternalProcesses() {
       const snap = await getDocs(q)
       const fsData = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }))
       fsData.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-      setRecords(fsData)
+      setRecords(deduplicateRecords(fsData))
     } catch (e) {
       console.error('Error fetching external processes:', e)
     }
@@ -540,7 +605,6 @@ export default function ExternalProcesses() {
         setFormMessage({ type: 'success', text: `✅ Orden ${uniqueId} registrada. 🔔 Notificación enviada al Designador para asignación de proveedor.` })
       } else {
         // ARREGLOS: immediate print flow
-        setRecords(prev => [newRecord, ...prev])
         setFormMessage({ type: 'success', text: `✅ Orden ${uniqueId} registrada exitosamente.` })
         // Trigger box-count print modal
         setPendingPrintRecord(newRecord)
@@ -548,8 +612,8 @@ export default function ExternalProcesses() {
         setShowBoxModal(true)
       }
 
-      // Update local state
-      setRecords(prev => [newRecord, ...prev])
+      // Update local state ONLY ONCE (Deduplicated)
+      setRecords(prev => deduplicateRecords([newRecord, ...prev]))
 
       // Reset form
       setFormData({ pedido_num: '', cliente: '', proveedor_nombre: '', observaciones: '' })
@@ -565,7 +629,7 @@ export default function ExternalProcesses() {
   }
 
 
-  // Sequential QR Scan Logic
+  // Sequential QR Scan Logic con normalización universal y cero duplicidad
   const handleQRScan = async (e, directCode = null) => {
     if (e) e.preventDefault()
     const inputCode = directCode || scanCode
@@ -577,36 +641,60 @@ export default function ExternalProcesses() {
       return
     }
 
-    const rawCode = inputCode.trim().replace(/[\r\n\t]/g, '')
+    const { raw, clean, normalizedId, pedidoNum, variations } = normalizeScannedCode(inputCode)
     setScanCode('')
     setScanFeedback(null)
 
-    // 1. Find record in current local state
-    let targetRecord = records.find(
-      r => r.id.toLowerCase() === rawCode.toLowerCase() || String(r.pedido_num).toLowerCase() === rawCode.toLowerCase()
-    )
+    // 1. Buscar en registros en memoria local utilizando todas las variantes normalizadas
+    let targetRecord = records.find(r => {
+      if (!r) return false
+      const rId = String(r.id || '').toUpperCase()
+      const rPed = String(r.pedido_num || '').toUpperCase()
+      const rIdAlphanum = rId.replace(/[^A-Z0-9]/g, '')
 
-    // 2. If not found in current section, query Supabase / Firestore across all sections
+      return variations.some(v => {
+        const vUpper = v.toUpperCase()
+        const vAlphanum = vUpper.replace(/[^A-Z0-9]/g, '')
+        return (
+          rId === vUpper ||
+          rPed === vUpper ||
+          (rIdAlphanum && rIdAlphanum === vAlphanum) ||
+          (pedidoNum && rPed === pedidoNum.toUpperCase())
+        )
+      })
+    })
+
+    // 2. Si no está en la memoria de la sección actual, consultar Supabase / Firestore con todas las variantes
     if (!targetRecord) {
       try {
-        const { data: sbMatch } = await supabase
+        const orConditions = variations
+          .slice(0, 8)
+          .flatMap(v => [`id.ilike.${v}`, `pedido_num.ilike.${v}`])
+          .join(',')
+
+        const { data: sbMatches } = await supabase
           .from('external_processes')
           .select('*')
-          .or(`id.eq.${rawCode},pedido_num.eq.${rawCode}`)
+          .or(orConditions)
           .limit(1)
 
-        if (sbMatch && sbMatch.length > 0) {
-          targetRecord = sbMatch[0]
+        if (sbMatches && sbMatches.length > 0) {
+          targetRecord = sbMatches[0]
         } else {
-          const qId = query(collection(db, 'external_processes'), where('id', '==', rawCode))
-          const snapId = await getDocs(qId)
-          if (!snapId.empty) {
-            targetRecord = { firestoreId: snapId.docs[0].id, ...snapId.docs[0].data() }
-          } else {
-            const qPed = query(collection(db, 'external_processes'), where('pedido_num', '==', rawCode))
+          // Búsqueda en Firebase Firestore
+          for (const v of [normalizedId, clean, raw, pedidoNum]) {
+            if (!v) continue
+            const qId = query(collection(db, 'external_processes'), where('id', '==', v))
+            const snapId = await getDocs(qId)
+            if (!snapId.empty) {
+              targetRecord = { firestoreId: snapId.docs[0].id, ...snapId.docs[0].data() }
+              break
+            }
+            const qPed = query(collection(db, 'external_processes'), where('pedido_num', '==', v))
             const snapPed = await getDocs(qPed)
             if (!snapPed.empty) {
               targetRecord = { firestoreId: snapPed.docs[0].id, ...snapPed.docs[0].data() }
+              break
             }
           }
         }
@@ -616,12 +704,15 @@ export default function ExternalProcesses() {
     }
 
     if (!targetRecord) {
-      setScanFeedback({ type: 'error', text: `❌ No se encontró ninguna orden con el código/pedido: "${rawCode}"` })
+      setScanFeedback({
+        type: 'error',
+        text: `❌ No se encontró ninguna orden con el código/pedido: "${raw}" (Interpretado: ${normalizedId || clean})`
+      })
       playBeep('error')
       return
     }
 
-    // Auto-switch section if scanned order belongs to another section
+    // Auto-switch de pestaña si la orden escaneada pertenece a otra sección (ej: ARREGLOS vs SERIGRAFÍA)
     if (targetRecord.section && targetRecord.section !== activeSection) {
       setActiveSection(targetRecord.section)
     }
@@ -648,19 +739,19 @@ export default function ExternalProcesses() {
     }
 
     if (targetRecord.status === 'PENDIENTE') {
-      // FIRST SCAN: OUTBOUND TO SUPPLIER
+      // ─── 1ER ESCANEO: SALIDA A PROVEEDOR (ENTREGADO AL PROVEEDOR) ───
       const updates = {
         status: 'ENTREGADO_PROVEEDOR',
         fecha_salida: nowIso,
         user_salida: currentUserName
       }
 
-      // Update Supabase
+      // Actualizar en Supabase
       try {
         await supabase.from('external_processes').update(updates).eq('id', targetRecord.id)
       } catch (e) {}
 
-      // Dual Sync to Firebase Firestore
+      // Dual Sync a Firebase Firestore
       try {
         await setDoc(doc(db, 'external_processes', targetRecord.id), updates, { merge: true })
         await addDoc(collection(db, 'external_processes_history'), {
@@ -676,27 +767,40 @@ export default function ExternalProcesses() {
         console.warn('Firebase scan sync note:', fbErr.message)
       }
 
-      setRecords(prev => prev.map(r => r.id === targetRecord.id ? { ...r, ...updates } : r))
+      // ACTUALIZACIÓN ESTRICTA IN-SITU (CERO DUPLICADOS EN MONITOR)
+      setRecords(prev => {
+        const index = prev.findIndex(r => r.id === targetRecord.id)
+        if (index >= 0) {
+          const next = [...prev]
+          next[index] = { ...next[index], ...updates }
+          return next
+        }
+        if (targetRecord.section === activeSection) {
+          return [{ ...targetRecord, ...updates }, ...prev]
+        }
+        return prev
+      })
+
       playBeep('success')
       
       setScanFeedback({
         type: 'success',
-        text: `🚚 [1er Escaneo - SALIDA] Orden #${targetRecord.pedido_num} (${targetRecord.cliente}) cambiada a "ENTREGADO AL PROVEEDOR (${targetRecord.proveedor_nombre || 'EXTERNO'})"`
+        text: `🚚 [1er Escaneo - SALIDA] Orden #${targetRecord.pedido_num} (${targetRecord.cliente}) cambiada a "ENTREGADO AL PROVEEDOR"`
       })
     } else if (targetRecord.status === 'ENTREGADO_PROVEEDOR') {
-      // SECOND SCAN: RETURN / RECEPTION FROM SUPPLIER
+      // ─── 2DO ESCANEO: RECEPCIÓN EN ALMACÉN (RECIBIDO EN ALMACÉN) ───
       const updates = {
         status: 'RECIBIDO',
         fecha_recepcion: nowIso,
         user_recepcion: currentUserName
       }
 
-      // Update Supabase
+      // Actualizar en Supabase
       try {
         await supabase.from('external_processes').update(updates).eq('id', targetRecord.id)
       } catch (e) {}
 
-      // Dual Sync to Firebase Firestore
+      // Dual Sync a Firebase Firestore
       try {
         await setDoc(doc(db, 'external_processes', targetRecord.id), updates, { merge: true })
         await addDoc(collection(db, 'external_processes_history'), {
@@ -712,18 +816,31 @@ export default function ExternalProcesses() {
         console.warn('Firebase scan sync note:', fbErr.message)
       }
 
-      setRecords(prev => prev.map(r => r.id === targetRecord.id ? { ...r, ...updates } : r))
+      // ACTUALIZACIÓN ESTRICTA IN-SITU (CERO DUPLICADOS EN MONITOR)
+      setRecords(prev => {
+        const index = prev.findIndex(r => r.id === targetRecord.id)
+        if (index >= 0) {
+          const next = [...prev]
+          next[index] = { ...next[index], ...updates }
+          return next
+        }
+        if (targetRecord.section === activeSection) {
+          return [{ ...targetRecord, ...updates }, ...prev]
+        }
+        return prev
+      })
+
       playBeep('success')
 
       setScanFeedback({
         type: 'success',
-        text: `✅ [2do Escaneo - RECEPCIÓN] Orden #${targetRecord.pedido_num} marcada como "RECIBIDO" exitosamente por ${currentUserName}`
+        text: `✅ [2do Escaneo - RECEPCIÓN] Orden #${targetRecord.pedido_num} marcada como "RECIBIDO EN ALMACÉN" por ${currentUserName}`
       })
     } else if (targetRecord.status === 'RECIBIDO') {
       playBeep('error')
       setScanFeedback({
         type: 'info',
-        text: `ℹ️ La orden #${targetRecord.pedido_num} ya se encuentra completada y recibida previamente por ${targetRecord.user_recepcion || 'usuario'}.`
+        text: `ℹ️ La orden #${targetRecord.pedido_num} ya se encuentra completada y recibida previamente en almacén por ${targetRecord.user_recepcion || 'usuario'}.`
       })
     }
   }
@@ -1617,7 +1734,7 @@ export default function ExternalProcesses() {
                     type="text"
                     placeholder="ESCANEE O INGRESE CÓDIGO AQUÍ..."
                     value={scanCode}
-                    onChange={e => setScanCode(e.target.value)}
+                    onChange={e => setScanCode(e.target.value.replace(/['’`´]/g, '-'))}
                     autoFocus
                     style={{
                       width: '100%', background: 'rgba(2,6,23,0.9)', border: '2px solid #3b82f6', borderRadius: '0.75rem',
@@ -1630,7 +1747,7 @@ export default function ExternalProcesses() {
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.75rem', color: '#94a3b8' }}>
                   <p style={{ fontWeight: 900, color: 'white', marginBottom: '0.4rem', textTransform: 'uppercase' }}>📌 FLUJO DE ESCANEO AUTOMÁTICO:</p>
                   <p style={{ marginBottom: '0.25rem' }}>• <b>1er Escaneo:</b> Cambia estatus a <span style={{ color: '#f59e0b', fontWeight: 900 }}>ENTREGADO AL PROVEEDOR</span> (Registra fecha y hora de salida).</p>
-                  <p>• <b>2do Escaneo:</b> Cambia estatus a <span style={{ color: '#22c55e', fontWeight: 900 }}>RECIBIDO</span> (Registra recepción de maquila y usuario receptor).</p>
+                  <p>• <b>2do Escaneo:</b> Cambia estatus a <span style={{ color: '#22c55e', fontWeight: 900 }}>RECIBIDO EN ALMACÉN</span> (Registra recepción de maquila y usuario receptor).</p>
                 </div>
               </form>
             </div>
@@ -1690,7 +1807,7 @@ export default function ExternalProcesses() {
                   type="text"
                   placeholder="ESCANEE CON PISTOLA O DIGITE CÓDIGO (Ej: EXT-ARR-54109-123 o 54109)..."
                   value={scanCode}
-                  onChange={e => setScanCode(e.target.value)}
+                  onChange={e => setScanCode(e.target.value.replace(/['’`´]/g, '-'))}
                   style={{
                     width: '100%', background: 'rgba(2,6,23,0.9)', border: '2px solid #3b82f6', borderRadius: '0.75rem',
                     padding: '0.75rem 1rem', color: 'white', fontWeight: 1000, fontSize: '0.9rem', outline: 'none',
@@ -1790,7 +1907,7 @@ export default function ExternalProcesses() {
                 <option value="PENDIENTE_ASIGNACION">PENDIENTE DE ASIGNACIÓN</option>
                 <option value="PENDIENTE">PENDIENTE (AUTORIZADO)</option>
                 <option value="ENTREGADO_PROVEEDOR">ENTREGADO AL PROVEEDOR</option>
-                <option value="RECIBIDO">RECIBIDO (COMPLETADO)</option>
+                <option value="RECIBIDO">RECIBIDO EN ALMACÉN</option>
                 <option value="CANCELADO">CANCELADO</option>
               </select>
             </div>
@@ -1874,7 +1991,7 @@ export default function ExternalProcesses() {
                 filteredRecords.map(r => {
                   const isCancelled = r.status === 'CANCELADO'
                   const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#3b82f6'
-                  const statusText = isCancelled ? 'CANCELADO' : r.status === 'ENTREGADO_PROVEEDOR' ? 'EN PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
+                  const statusText = isCancelled ? 'CANCELADO' : r.status === 'RECIBIDO' ? 'RECIBIDO EN ALMACÉN' : r.status === 'ENTREGADO_PROVEEDOR' ? 'ENTREGADO AL PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
 
                   return (
                     <div
