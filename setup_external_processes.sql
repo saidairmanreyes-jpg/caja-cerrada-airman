@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.external_processes (
   proveedor_nombre TEXT NOT NULL,
   unit_cost NUMERIC(10,2) DEFAULT 0.00,
   total_cost NUMERIC(10,2) DEFAULT 0.00,
+  observaciones TEXT,
   status TEXT NOT NULL DEFAULT 'PENDIENTE', -- 'PENDIENTE', 'ENTREGADO_PROVEEDOR', 'RECIBIDO'
   fecha_salida TIMESTAMP WITH TIME ZONE,
   user_salida TEXT,

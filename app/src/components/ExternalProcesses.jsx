@@ -38,11 +38,38 @@ export default function ExternalProcesses() {
   const [processTypes, setProcessTypes] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Audio feedback helper for QR scanner
+  const playBeep = (type = 'success') => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(880, ctx.currentTime) // A5
+        gain.gain.setValueAtTime(0.15, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.15)
+      } else if (type === 'error') {
+        osc.frequency.setValueAtTime(300, ctx.currentTime)
+        gain.gain.setValueAtTime(0.2, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.3)
+      }
+    } catch (e) {}
+  }
+
   // Form state for order header
   const [formData, setFormData] = useState({
     pedido_num: '',
     cliente: '',
     proveedor_nombre: '',
+    observaciones: '',
   })
 
   // State for multiple processes attached to current order
@@ -379,7 +406,8 @@ export default function ExternalProcesses() {
         talla: `${record.total_piezas} PZ`,
         location: record.proveedor_nombre,
         date: new Date(record.created_at).toLocaleDateString('es-MX'),
-        warehouse: record.warehouse
+        warehouse: record.warehouse,
+        observaciones: record.observaciones || ''
       })
 
       if (res.success) {
@@ -460,6 +488,7 @@ export default function ExternalProcesses() {
       unit_cost: unitCostAvg,
       total_cost: totalCostOrder,
       procesos_detalle: JSON.stringify(addedProcesses),
+      observaciones: (formData.observaciones || '').trim().substring(0, 50),
       status: initialStatus,
       warehouse: activeWarehouse || 'MATRIZ',
       created_by_uid: user?.uid || '',
@@ -496,6 +525,7 @@ export default function ExternalProcesses() {
             cliente: formData.cliente.trim(),
             proceso_nombre: procesoNombreSummary,
             total_piezas: totalPiezasOrder,
+            observaciones: (formData.observaciones || '').trim().substring(0, 50),
             section: activeSection,
             created_at: new Date().toISOString(),
             read: false,
@@ -522,7 +552,7 @@ export default function ExternalProcesses() {
       setRecords(prev => [newRecord, ...prev])
 
       // Reset form
-      setFormData({ pedido_num: '', cliente: '', proveedor_nombre: '' })
+      setFormData({ pedido_num: '', cliente: '', proveedor_nombre: '', observaciones: '' })
       setAddedProcesses([])
       setTempProcessName('')
       setTempProcessPiezas('')
@@ -536,31 +566,86 @@ export default function ExternalProcesses() {
 
 
   // Sequential QR Scan Logic
-  const handleQRScan = async (e) => {
-    e.preventDefault()
-    if (!scanCode.trim()) return
+  const handleQRScan = async (e, directCode = null) => {
+    if (e) e.preventDefault()
+    const inputCode = directCode || scanCode
+    if (!inputCode || !inputCode.trim()) return
 
     if (!canMonitor && !canCapture) {
       setScanFeedback({ type: 'error', text: '⛔ No tienes permisos para escanear y actualizar pedidos.' })
+      playBeep('error')
       return
     }
 
-    const rawCode = scanCode.trim()
+    const rawCode = inputCode.trim().replace(/[\r\n\t]/g, '')
     setScanCode('')
     setScanFeedback(null)
 
-    // Find record by ID or Pedido Num
-    const targetRecord = records.find(
+    // 1. Find record in current local state
+    let targetRecord = records.find(
       r => r.id.toLowerCase() === rawCode.toLowerCase() || String(r.pedido_num).toLowerCase() === rawCode.toLowerCase()
     )
 
+    // 2. If not found in current section, query Supabase / Firestore across all sections
     if (!targetRecord) {
-      setScanFeedback({ type: 'error', text: `❌ No se encontró ninguna orden con el código/pedido: ${rawCode}` })
+      try {
+        const { data: sbMatch } = await supabase
+          .from('external_processes')
+          .select('*')
+          .or(`id.eq.${rawCode},pedido_num.eq.${rawCode}`)
+          .limit(1)
+
+        if (sbMatch && sbMatch.length > 0) {
+          targetRecord = sbMatch[0]
+        } else {
+          const qId = query(collection(db, 'external_processes'), where('id', '==', rawCode))
+          const snapId = await getDocs(qId)
+          if (!snapId.empty) {
+            targetRecord = { firestoreId: snapId.docs[0].id, ...snapId.docs[0].data() }
+          } else {
+            const qPed = query(collection(db, 'external_processes'), where('pedido_num', '==', rawCode))
+            const snapPed = await getDocs(qPed)
+            if (!snapPed.empty) {
+              targetRecord = { firestoreId: snapPed.docs[0].id, ...snapPed.docs[0].data() }
+            }
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Cross-section QR lookup note:', fetchErr)
+      }
+    }
+
+    if (!targetRecord) {
+      setScanFeedback({ type: 'error', text: `❌ No se encontró ninguna orden con el código/pedido: "${rawCode}"` })
+      playBeep('error')
       return
+    }
+
+    // Auto-switch section if scanned order belongs to another section
+    if (targetRecord.section && targetRecord.section !== activeSection) {
+      setActiveSection(targetRecord.section)
     }
 
     const currentUserName = profile?.name || user?.email || 'USUARIO ALMACÉN'
     const nowIso = new Date().toISOString()
+
+    if (targetRecord.status === 'CANCELADO') {
+      setScanFeedback({
+        type: 'error',
+        text: `🚫 [CANCELADO] El pedido #${targetRecord.pedido_num} (${targetRecord.cliente}) está CANCELADO: "${targetRecord.motivo_cancelacion || 'Sin motivo especificado'}"`
+      })
+      playBeep('error')
+      return
+    }
+
+    if (targetRecord.status === 'PENDIENTE_ASIGNACION') {
+      setScanFeedback({
+        type: 'info',
+        text: `⏳ [PENDIENTE ASIGNACIÓN] El pedido #${targetRecord.pedido_num} requiere asignación de proveedor/costo por el Designador antes de ser enviado.`
+      })
+      playBeep('error')
+      return
+    }
 
     if (targetRecord.status === 'PENDIENTE') {
       // FIRST SCAN: OUTBOUND TO SUPPLIER
@@ -592,10 +677,11 @@ export default function ExternalProcesses() {
       }
 
       setRecords(prev => prev.map(r => r.id === targetRecord.id ? { ...r, ...updates } : r))
+      playBeep('success')
       
       setScanFeedback({
         type: 'success',
-        text: `🚚 [1er Escaneo - SALIDA] Orden #${targetRecord.pedido_num} (${targetRecord.cliente}) cambiada a "ENTREGADO AL PROVEEDOR"`
+        text: `🚚 [1er Escaneo - SALIDA] Orden #${targetRecord.pedido_num} (${targetRecord.cliente}) cambiada a "ENTREGADO AL PROVEEDOR (${targetRecord.proveedor_nombre || 'EXTERNO'})"`
       })
     } else if (targetRecord.status === 'ENTREGADO_PROVEEDOR') {
       // SECOND SCAN: RETURN / RECEPTION FROM SUPPLIER
@@ -627,12 +713,14 @@ export default function ExternalProcesses() {
       }
 
       setRecords(prev => prev.map(r => r.id === targetRecord.id ? { ...r, ...updates } : r))
+      playBeep('success')
 
       setScanFeedback({
         type: 'success',
-        text: `✅ [2do Escaneo - RECEPCIÓN] Orden #${targetRecord.pedido_num} marcada como "RECIBIDO" por ${currentUserName}`
+        text: `✅ [2do Escaneo - RECEPCIÓN] Orden #${targetRecord.pedido_num} marcada como "RECIBIDO" exitosamente por ${currentUserName}`
       })
     } else if (targetRecord.status === 'RECIBIDO') {
+      playBeep('error')
       setScanFeedback({
         type: 'info',
         text: `ℹ️ La orden #${targetRecord.pedido_num} ya se encuentra completada y recibida previamente por ${targetRecord.user_recepcion || 'usuario'}.`
@@ -922,7 +1010,8 @@ export default function ExternalProcesses() {
         cliente: pendingPrintRecord.cliente,
         proceso: pendingPrintRecord.proceso_nombre,
         proveedor: pendingPrintRecord.proveedor_nombre,
-        date: new Date(pendingPrintRecord.created_at).toLocaleDateString('es-MX')
+        date: new Date(pendingPrintRecord.created_at).toLocaleDateString('es-MX'),
+        observaciones: pendingPrintRecord.observaciones || ''
       }
       const res = await printLabelMultiBox(printData, n, (pct) => setBoxPrintProgress(pct))
       if (res.success) {
@@ -1033,13 +1122,11 @@ export default function ExternalProcesses() {
     return matchesSearch && matchesSupplier && matchesStatus
   })
 
-  // Summary Metrics
-  const totalOrdersCount = filteredRecords.length
-  const totalPiecesCount = filteredRecords.reduce((acc, curr) => acc + (curr.total_piezas || 0), 0)
-  // AJUSTE: Los procesos CANCELADOS se excluyen del monto total facturable en pantalla
-  const totalCostSum = filteredRecords
-    .filter(r => r.status !== 'CANCELADO')
-    .reduce((acc, curr) => acc + (curr.total_cost || 0), 0)
+  // Summary Metrics (Excluyendo órdenes canceladas para que los KPIs reflejen solo pedidos activos/completados)
+  const activeFilteredRecords = filteredRecords.filter(r => r.status !== 'CANCELADO')
+  const totalOrdersCount = activeFilteredRecords.length
+  const totalPiecesCount = activeFilteredRecords.reduce((acc, curr) => acc + (curr.total_piezas || 0), 0)
+  const totalCostSum = activeFilteredRecords.reduce((acc, curr) => acc + (curr.total_cost || 0), 0)
 
   // Render Full Restricted Access Banner if user has neither capture nor monitor access
   if (!canCapture && !canMonitor) {
@@ -1194,7 +1281,7 @@ export default function ExternalProcesses() {
             }}
           >
             <LayoutDashboard size={18} color={moduleTab === 'monitor' ? '#ef4444' : '#64748b'} />
-            2. MONITOR DE SEGUIMIENTO ({records.length})
+            2. MONITOR DE SEGUIMIENTO ({records.filter(r => r.status !== 'CANCELADO').length})
           </button>
         )}
 
@@ -1332,6 +1419,29 @@ export default function ExternalProcesses() {
                   </span>
                 </div>
               )}
+
+              {/* NUEVO CAMPO: OBSERVACIONES (Requerimiento 3 - Máx 50 caracteres) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                  <label style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase' }}>
+                    OBSERVACIONES (INSTRUCCIONES AL PROVEEDOR)
+                  </label>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 900, color: (formData.observaciones || '').length >= 45 ? '#f59e0b' : '#64748b' }}>
+                    {(formData.observaciones || '').length}/50 MÁX
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ej: Bastilla 2cm / Doble costura / Hilo azul..."
+                  maxLength={50}
+                  value={formData.observaciones || ''}
+                  onChange={e => setFormData({ ...formData, observaciones: e.target.value.slice(0, 50) })}
+                  style={{
+                    width: '100%', background: 'rgba(2,6,23,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem',
+                    padding: '0.65rem 0.875rem', color: 'white', fontWeight: 800, fontSize: '0.85rem', outline: 'none'
+                  }}
+                />
+              </div>
 
               {/* Multiple Processes Add Area */}
               <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '1rem', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1532,11 +1642,86 @@ export default function ExternalProcesses() {
       {/* PESTAÑA 2: MONITOR DE SEGUIMIENTO */}
       {moduleTab === 'monitor' && canMonitor && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+          {/* Lector Rápido de Código QR en Monitor */}
+          <div style={{
+            background: 'rgba(15,23,42,0.7)',
+            border: '2px solid rgba(59,130,246,0.3)',
+            borderRadius: '1.25rem',
+            padding: '1.25rem',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            boxShadow: '0 10px 25px -5px rgba(59,130,246,0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <QrCode size={20} color="#3b82f6" />
+                <span style={{ fontWeight: 1000, fontSize: '0.9rem', color: 'white', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  LECTOR DE ESCANEO DE ETIQUETA QR
+                </span>
+                <span style={{ fontSize: '0.65rem', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', padding: '0.15rem 0.5rem', borderRadius: '0.4rem', fontWeight: 900, textTransform: 'uppercase' }}>
+                  SECUENCIAL AUTOMÁTICO
+                </span>
+              </div>
+              <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800 }}>
+                1er Scan: <b style={{ color: '#f59e0b' }}>Salida</b> | 2do Scan: <b style={{ color: '#22c55e' }}>Recepción</b>
+              </span>
+            </div>
+
+            {scanFeedback && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '0.75rem',
+                fontSize: '0.85rem',
+                fontWeight: 900,
+                background: scanFeedback.type === 'error' ? 'rgba(239,68,68,0.15)' : scanFeedback.type === 'info' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
+                border: `1px solid ${scanFeedback.type === 'error' ? 'rgba(239,68,68,0.3)' : scanFeedback.type === 'info' ? 'rgba(59,130,246,0.3)' : 'rgba(34,197,94,0.3)'}`,
+                color: scanFeedback.type === 'error' ? '#f87171' : scanFeedback.type === 'info' ? '#60a5fa' : '#4ade80'
+              }}>
+                {scanFeedback.text}
+              </div>
+            )}
+
+            <form onSubmit={handleQRScan} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="ESCANEE CON PISTOLA O DIGITE CÓDIGO (Ej: EXT-ARR-54109-123 o 54109)..."
+                  value={scanCode}
+                  onChange={e => setScanCode(e.target.value)}
+                  style={{
+                    width: '100%', background: 'rgba(2,6,23,0.9)', border: '2px solid #3b82f6', borderRadius: '0.75rem',
+                    padding: '0.75rem 1rem', color: 'white', fontWeight: 1000, fontSize: '0.9rem', outline: 'none',
+                    boxShadow: '0 0 15px rgba(59,130,246,0.2)'
+                  }}
+                />
+              </div>
+              <button
+                type="submit"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.75rem',
+                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                  border: 'none',
+                  color: 'white',
+                  fontWeight: 1000,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                PROCESAR
+              </button>
+            </form>
+          </div>
           
           {/* Summary Cards Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div style={{ background: 'rgba(15,23,42,0.6)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase' }}>TOTAL ORDENES FILTRADAS</span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase' }}>TOTAL ÓRDENES ACTIVAS</span>
               <p style={{ fontSize: '1.75rem', fontWeight: 1000, color: 'white', marginTop: '0.2rem' }}>{totalOrdersCount}</p>
             </div>
 
@@ -1723,8 +1908,15 @@ export default function ExternalProcesses() {
                       </div>
 
                       {/* Proceso */}
-                      <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase' }}>
-                        {r.proceso_nombre}
+                      <div>
+                        <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase' }}>
+                          {r.proceso_nombre}
+                        </div>
+                        {r.observaciones && (
+                          <div style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 800, marginTop: '2px', fontStyle: 'italic' }}>
+                            Obs: {r.observaciones}
+                          </div>
+                        )}
                       </div>
 
                       {/* Fecha Salida (1er Escaneo) */}
@@ -2457,11 +2649,20 @@ export default function ExternalProcesses() {
                   <div style={{ fontSize: '8.5pt', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <b>PROVEEDOR:</b> <span style={{ fontWeight: 900, textTransform: 'uppercase' }}>{selectedLabelRecord.proveedor_nombre}</span>
                   </div>
+
+                  {/* Observaciones (Requerimiento 3 y 4 - Máx 50 carácteres, ubicación secundaria no invasiva) */}
+                  {selectedLabelRecord.observaciones && (
+                    <div style={{ fontSize: '7.5pt', lineHeight: 1.15, color: '#0f172a', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '1px 4px', borderRadius: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <b>OBS:</b> <span style={{ fontWeight: 800 }}>{selectedLabelRecord.observaciones}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right Column: Unique QR Code & ID */}
                 <div style={{ width: '35%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <QRCodeSVG value={selectedLabelRecord.id} size={85} level="M" />
+                  <div style={{ background: '#ffffff', padding: '2px', borderRadius: '4px' }}>
+                    <QRCodeSVG value={selectedLabelRecord.id} size={78} level="M" includeMargin={true} />
+                  </div>
                   <span style={{ fontSize: '6.5pt', fontWeight: 1000, marginTop: '2px', letterSpacing: '-0.02em', textAlign: 'center' }}>
                     {selectedLabelRecord.id}
                   </span>

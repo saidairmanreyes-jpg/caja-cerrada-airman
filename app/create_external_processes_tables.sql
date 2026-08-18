@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.external_processes (
     unit_cost NUMERIC(10,2) DEFAULT 0,
     total_cost NUMERIC(10,2) DEFAULT 0,
     procesos_detalle TEXT,
+    observaciones TEXT,
     status TEXT NOT NULL DEFAULT 'PENDIENTE',
     warehouse TEXT DEFAULT 'MATRIZ',
     created_by_uid TEXT,
