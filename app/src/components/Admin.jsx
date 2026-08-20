@@ -719,24 +719,126 @@ export default function Admin() {
 
             <div className="glass" style={{ padding: '2.5rem', borderRadius: '2rem' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white', textTransform: 'uppercase', marginBottom: '2rem' }}>PERSONAL ACTIVO</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
                 {workers.map(w => (
-                  <div key={w.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#ef4444,#b91c1c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'white', fontSize: '1rem', flexShrink: 0 }}>
+                  <div key={w.id} style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    padding: '1.25rem 1.5rem',
+                    borderRadius: '1.25rem',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '1rem',
+                    minWidth: 0,
+                    overflow: 'hidden'
+                  }}>
+                    {/* Contenedor de usuario (Avatar + Textos con truncamiento seguro) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg,#ef4444,#b91c1c)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 900,
+                        color: 'white',
+                        fontSize: '1.1rem',
+                        flexShrink: 0,
+                        boxShadow: '0 4px 12px rgba(239,68,68,0.25)'
+                      }}>
                         {w.name?.charAt(0) || 'U'}
                       </div>
-                      <div style={{ overflow: 'hidden' }}>
-                        <p style={{ fontWeight: 900, color: 'white', fontSize: '0.85rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform:'uppercase' }}>{w.name}</p>
-                        <p style={{ fontSize: '0.6rem', color: '#64748b', fontWeight: 800, marginTop: '0.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform:'uppercase' }}>{w.email}</p>
-                        <p style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.25rem' }}>
-                          [{w.role === 'sales' ? 'VENTAS' : w.role === 'maquila' ? 'MAQUILA' : 'OPERADOR'}] ALMACÉN: <span style={{ color: 'white' }}>{w.warehouse || 'MATRIZ'}</span>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                        <p style={{
+                          fontWeight: 900,
+                          color: 'white',
+                          fontSize: '0.88rem',
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em',
+                          margin: 0
+                        }} title={w.name}>
+                          {w.name}
                         </p>
+                        <p style={{
+                          fontSize: '0.68rem',
+                          color: '#94a3b8',
+                          fontWeight: 600,
+                          marginTop: '0.2rem',
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          margin: '0.2rem 0 0 0'
+                        }} title={w.email}>
+                          {w.email}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                          <span style={{
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '0.35rem',
+                            fontSize: '0.58rem',
+                            fontWeight: 900,
+                            background: 'rgba(239,68,68,0.15)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239,68,68,0.25)',
+                            whiteSpace: 'nowrap',
+                            textTransform: 'uppercase'
+                          }}>
+                            {w.role === 'sales' ? 'VENTAS' : w.role === 'maquila' ? 'MAQUILA' : 'OPERADOR'}
+                          </span>
+                          <span style={{
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '0.35rem',
+                            fontSize: '0.58rem',
+                            fontWeight: 800,
+                            background: 'rgba(255,255,255,0.05)',
+                            color: '#cbd5e1',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            whiteSpace: 'nowrap',
+                            textTransform: 'uppercase'
+                          }}>
+                            ALMACÉN: <b style={{ color: 'white' }}>{w.warehouse || 'MATRIZ'}</b>
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => handleDeleteWorker(w.id, w.name)} style={{ background: 'rgba(239,68,68,0.05)', border: 'none', padding: '0.75rem 1rem', borderRadius: '0.75rem', color: '#ef4444', cursor: 'pointer', flexShrink: 0, fontWeight: 900, fontSize: '0.7rem' }} title="REVOCAR ACCESO">
-                      ELIMINAR
-                    </button>
+
+                    {/* Botón de acción con margen y contenedor propio aislado */}
+                    <div style={{ flexShrink: 0, marginLeft: 'auto' }}>
+                      <button
+                        onClick={() => handleDeleteWorker(w.id, w.name)}
+                        style={{
+                          background: 'rgba(239,68,68,0.08)',
+                          border: '1px solid rgba(239,68,68,0.2)',
+                          padding: '0.6rem 0.9rem',
+                          borderRadius: '0.75rem',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          fontWeight: 900,
+                          fontSize: '0.7rem',
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = 'rgba(239,68,68,0.2)'
+                          e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'rgba(239,68,68,0.08)'
+                          e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)'
+                        }}
+                        title="REVOCAR ACCESO"
+                      >
+                        ELIMINAR
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

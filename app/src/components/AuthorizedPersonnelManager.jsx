@@ -130,15 +130,56 @@ export default function AuthorizedPersonnelManager() {
             <p style={{ color: '#64748b', fontSize: '0.8rem', textAlign: 'center', padding: '2rem' }}>NO HAY PERSONAS AUTORIZADAS REGISTRADAS.</p>
           ) : (
             workers.map(w => (
-              <div key={w.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-
-                  <span style={{ fontWeight: 800, color: 'white', fontSize: '0.9rem' }}>{w.name}</span>
+              <div key={w.id} style={{
+                background: 'rgba(255,255,255,0.02)',
+                padding: '1.25rem 1.5rem',
+                borderRadius: '1.25rem',
+                border: '1px solid rgba(255,255,255,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                minWidth: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#4ade80', fontWeight: 900, fontSize: '0.85rem', flexShrink: 0
+                  }}>
+                    {w.name?.charAt(0) || '👤'}
+                  </div>
+                  <span style={{
+                    fontWeight: 800,
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    textTransform: 'uppercase'
+                  }} title={w.name}>
+                    {w.name}
+                  </span>
                 </div>
                 <button 
                   onClick={() => handleDeleteWorker(w.id, w.name)}
                   disabled={actionLoading}
-                  style={{ background: 'rgba(239,68,68,0.05)', border: 'none', padding: '0.75rem 1rem', borderRadius: '0.75rem', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 900, fontSize: '0.7rem' }}
+                  style={{
+                    background: 'rgba(239,68,68,0.08)',
+                    border: '1px solid rgba(239,68,68,0.2)',
+                    padding: '0.6rem 0.9rem',
+                    borderRadius: '0.75rem',
+                    color: '#ef4444',
+                    cursor: actionLoading ? 'wait' : 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: 900,
+                    fontSize: '0.7rem',
+                    flexShrink: 0,
+                    textTransform: 'uppercase'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
                 >
                   ELIMINAR
                 </button>

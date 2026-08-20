@@ -464,14 +464,15 @@ export default function Inventory() {
             </div>
           ) : (
             <div style={{borderRadius:'1.5rem',border:'1px solid rgba(255,255,255,0.07)',overflow:'hidden', background: 'rgba(255,255,255,0.01)'}}>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead>
-                  <tr style={{background:'rgba(255,255,255,0.04)'}}>
-                    {['UBICACIÓN','CÓDIGO / SKU','TALLA','STOCK','ORDEN DE PROCESO','FECHA INGRESO','ESTADO'].map(h=>(
-                      <th key={h} style={{padding:'1.25rem 1.5rem',textAlign:'left',color:'#64748b',fontWeight:1000,fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.15em'}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{width:'100%',borderCollapse:'collapse',minWidth:'850px'}}>
+                  <thead>
+                    <tr style={{background:'rgba(255,255,255,0.04)'}}>
+                      {['UBICACIÓN','CÓDIGO / SKU','TALLA','STOCK','ORDEN DE PROCESO','FECHA INGRESO','ESTADO'].map(h=>(
+                        <th key={h} style={{padding:'1.25rem 1.5rem',textAlign:'left',color:'#64748b',fontWeight:1000,fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.15em',whiteSpace:'nowrap'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
                 <tbody>
                   {filteredInv.map((item,i)=>(
                     <tr key={item.id} style={{borderTop:'1px solid rgba(255,255,255,0.05)',background:i%2===0?'transparent':'rgba(255,255,255,0.01)', transition: 'background 0.2s'}}
@@ -509,7 +510,8 @@ export default function Inventory() {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
+        )}
           {!loading && filteredInv.length===0 && (
             <div style={{textAlign:'center',padding:'6rem',border:'1px dashed rgba(255,255,255,0.1)',borderRadius:'2rem', background: 'rgba(255,255,255,0.01)'}}>
               <h4 style={{fontWeight:1000,color:'white', textTransform: 'uppercase', fontSize: '1.5rem', marginBottom: '1rem', letterSpacing: '0.1em'}}>SIN COINCIDENCIAS DISPONIBLES</h4>

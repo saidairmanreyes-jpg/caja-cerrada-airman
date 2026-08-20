@@ -1961,12 +1961,12 @@ export default function ExternalProcesses() {
             overflow: 'hidden', backdropFilter: 'blur(12px)'
           }}>
             <div style={{ overflowX: 'auto' }}>
-              <div style={{ minWidth: canSeeCosts ? '1150px' : '1050px' }}>
+              <div style={{ minWidth: canSeeCosts ? '1380px' : '1260px' }}>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: canSeeCosts 
-                    ? 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 2.3fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)' 
-                    : 'minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 2.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1.4fr)',
+                    ? 'minmax(110px, 1.1fr) minmax(110px, 1fr) minmax(70px, 0.6fr) minmax(180px, 2fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) minmax(110px, 1fr) minmax(105px, 1fr) minmax(290px, 1.8fr)' 
+                    : 'minmax(120px, 1.2fr) minmax(120px, 1.1fr) minmax(75px, 0.7fr) minmax(200px, 2.2fr) minmax(120px, 1.2fr) minmax(120px, 1.2fr) minmax(115px, 1.1fr) minmax(290px, 1.9fr)',
                   gap: '0.75rem',
                   alignItems: 'center',
                   padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -1980,7 +1980,7 @@ export default function ExternalProcesses() {
                   <div style={{ minWidth: 0 }}>RECEPCIÓN (2do SCAN)</div>
                   <div style={{ minWidth: 0 }}>USUARIO RECEPTOR</div>
                   {canSeeCosts && <div style={{ minWidth: 0 }}>TOTAL FACTURABLE</div>}
-                  <div style={{ minWidth: 0 }}>ESTATUS / ETIQUETA</div>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>ESTATUS / ETIQUETA</div>
                 </div>
 
                 <div className="custom-scrollbar" style={{ maxHeight: '550px', overflowY: 'auto' }}>
@@ -2005,8 +2005,8 @@ export default function ExternalProcesses() {
                           style={{
                             display: 'grid',
                             gridTemplateColumns: canSeeCosts 
-                              ? 'minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 0.6fr) minmax(0, 2.3fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr)' 
-                              : 'minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 2.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1.4fr)',
+                              ? 'minmax(110px, 1.1fr) minmax(110px, 1fr) minmax(70px, 0.6fr) minmax(180px, 2fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) minmax(110px, 1fr) minmax(105px, 1fr) minmax(290px, 1.8fr)' 
+                              : 'minmax(120px, 1.2fr) minmax(120px, 1.1fr) minmax(75px, 0.7fr) minmax(200px, 2.2fr) minmax(120px, 1.2fr) minmax(120px, 1.2fr) minmax(115px, 1.1fr) minmax(290px, 1.9fr)',
                             gap: '0.75rem',
                             padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
                             background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.2s',
@@ -2068,59 +2068,79 @@ export default function ExternalProcesses() {
                           )}
 
                           {/* Estatus & Actions (Botón X y Botón Impresora) */}
-                          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
-                            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ minWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', flexWrap: 'nowrap' }}>
+                            <div style={{ minWidth: 0, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
                               <span style={{
-                                display: 'inline-flex', alignItems: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
                                 background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
                                 fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase', whiteSpace: 'nowrap'
                               }}>
                                 {statusText}
                               </span>
                               {isCancelled && r.motivo_cancelacion && (
-                                <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
+                                <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
                                   Motivo: {r.motivo_cancelacion}
                                 </span>
                               )}
                             </div>
 
-                            {/* Botón de Cancelación (X) - Requerimiento 1 */}
-                            {!isCancelled && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                              {/* Botón de Cancelación (X) - Requerimiento 1 */}
+                              {!isCancelled && (
+                                <button
+                                  onClick={() => handleOpenCancelModal(r)}
+                                  title="CANCELAR PROCESO"
+                                  style={{
+                                    background: 'rgba(239,68,68,0.15)',
+                                    border: '1px solid rgba(239,68,68,0.3)',
+                                    color: '#ef4444',
+                                    borderRadius: '0.5rem',
+                                    padding: '0.45rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s',
+                                    flexShrink: 0
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.3)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                                >
+                                  <X size={15} />
+                                </button>
+                              )}
+
+                              {/* Botón de Impresión con validación y modal de cajas - Requerimiento 2 */}
                               <button
-                                onClick={() => handleOpenCancelModal(r)}
-                                title="CANCELAR PROCESO"
+                                onClick={() => handlePrinterClick(r)}
+                                title={(r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre) ? 'Requiere asignación de proveedor/costo por autorizador para imprimir' : 'IMPRIMIR ETIQUETA QR'}
                                 style={{
-                                  background: 'rgba(239,68,68,0.15)',
-                                  border: '1px solid rgba(239,68,68,0.3)',
-                                  color: '#ef4444',
-                                  borderRadius: '0.4rem',
-                                  padding: '0.35rem',
-                                  cursor: 'pointer',
+                                  background: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.08)',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  color: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? '#475569' : '#e2e8f0',
+                                  borderRadius: '0.5rem',
+                                  padding: '0.45rem',
+                                  cursor: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'not-allowed' : 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  transition: 'all 0.2s'
+                                  transition: 'all 0.2s',
+                                  flexShrink: 0
+                                }}
+                                onMouseEnter={e => {
+                                  if (r.status !== 'PENDIENTE_ASIGNACION' && r.proveedor_nombre && !isCancelled) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.18)'
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (r.status !== 'PENDIENTE_ASIGNACION' && r.proveedor_nombre && !isCancelled) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                                  }
                                 }}
                               >
-                                <X size={14} />
+                                <Printer size={15} />
                               </button>
-                            )}
-
-                            {/* Botón de Impresión con validación y modal de cajas - Requerimiento 2 */}
-                            <button
-                              onClick={() => handlePrinterClick(r)}
-                              title={(r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre) ? 'Requiere asignación de proveedor/costo por autorizador para imprimir' : 'IMPRIMIR ETIQUETA QR'}
-                              style={{
-                                background: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
-                                border: 'none',
-                                color: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? '#475569' : '#94a3b8',
-                                borderRadius: '0.4rem',
-                                padding: '0.35rem',
-                                cursor: (r.status === 'PENDIENTE_ASIGNACION' || !r.proveedor_nombre || isCancelled) ? 'not-allowed' : 'pointer'
-                              }}
-                            >
-                              <Printer size={14} />
-                            </button>
+                            </div>
                           </div>
                         </div>
                       )

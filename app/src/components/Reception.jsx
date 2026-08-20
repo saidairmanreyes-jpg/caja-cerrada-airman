@@ -898,14 +898,15 @@ export default function Reception() {
             </div>
           ) : (
             <div style={{borderRadius:'1rem',border:'1px solid rgba(255,255,255,0.07)',overflow:'hidden'}}>
-              <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem'}}>
-                <thead>
-                   <tr style={{background:'rgba(255,255,255,0.04)'}}>
-                    {['FECHA/HORA','CÓDIGO','TALLA','CANT.','OP','PKG ID','FECHA FIFO','UBICACIÓN','RECIBIÓ','ESTADO','ACCIÓN'].map(h => (
-                      <th key={h} style={{padding:'0.875rem 1rem',textAlign:'left',color:'#64748b',fontWeight:900,fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:'0.1em'}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem',minWidth:'920px'}}>
+                  <thead>
+                     <tr style={{background:'rgba(255,255,255,0.04)'}}>
+                      {['FECHA/HORA','CÓDIGO','TALLA','CANT.','OP','PKG ID','FECHA FIFO','UBICACIÓN','RECIBIÓ','ESTADO','ACCIÓN'].map(h => (
+                        <th key={h} style={{padding:'0.875rem 1rem',textAlign:'left',color:'#64748b',fontWeight:900,fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:'0.1em',whiteSpace:'nowrap'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
                 <tbody>
                   {historyData.map((r,i)=>(
                     <tr key={r.id} style={{borderTop:'1px solid rgba(255,255,255,0.05)',background:i%2===0?'transparent':'rgba(255,255,255,0.01)'}}>
@@ -942,7 +943,8 @@ export default function Reception() {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
+        )}
         </div>
       )}
     </div>
