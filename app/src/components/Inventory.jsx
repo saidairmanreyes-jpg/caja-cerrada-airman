@@ -339,11 +339,21 @@ export default function Inventory() {
     }
   }
 
-  const filteredInv = inventory.filter(item =>
+  // Strictly sort inventory by location name from A to Z
+  const sortedInv = [...inventory].sort((a, b) => {
+    const locA = a.locations?.name || ''
+    const locB = b.locations?.name || ''
+    return locA.localeCompare(locB, undefined, { numeric: true, sensitivity: 'base' })
+  })
+
+  const filteredInv = sortedInv.filter(item =>
     (item.products?.code?.toLowerCase() || '').includes(filter.toLowerCase()) ||
     (item.locations?.name?.toLowerCase() || '').includes(filter.toLowerCase()) ||
-    (item.op?.toLowerCase() || '').includes(filter.toLowerCase())
+    (item.op?.toLowerCase() || '').includes(filter.toLowerCase()) ||
+    (item.talla?.toLowerCase() || '').includes(filter.toLowerCase())
   )
+
+  const totalQuantity = filteredInv.reduce((acc, item) => acc + (Number(item.quantity) || 0), 0)
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:'2rem'}}>
@@ -355,7 +365,7 @@ export default function Inventory() {
             <span style={{fontSize:'0.75rem',fontWeight:1000,textTransform:'uppercase',letterSpacing:'0.25em'}}>VISIBILIDAD GLOBAL AIRMAN</span>
           </div>
           <h1 style={{fontSize:'2.5rem',fontWeight:1000,color:'white',textTransform:'uppercase', letterSpacing: '-0.02em'}}>EXISTENCIAS DE <span style={{color:'#EF4444'}}>{activeWarehouse}</span></h1>
-          <p style={{color:'#94a3b8',fontSize:'0.9rem',marginTop:'0.25rem',fontWeight:900,textTransform:'uppercase', letterSpacing: '0.1em'}}>STOCK EN TIEMPO REAL · {filteredInv.length} LOCALIDADES ACTIVAS</p>
+          <p style={{color:'#94a3b8',fontSize:'0.9rem',marginTop:'0.25rem',fontWeight:900,textTransform:'uppercase', letterSpacing: '0.1em'}}>STOCK EN TIEMPO REAL · {filteredInv.length} LOCALIDADES (ORDENADAS A-Z) · {totalQuantity.toLocaleString()} PZAS TOTALES</p>
         </div>
         <div style={{display:'flex',gap:'1rem',flexWrap:'wrap'}}>
           <button onClick={() => setTraceOpen(true)} style={{
@@ -378,7 +388,7 @@ export default function Inventory() {
       {/* Filters Bar */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:'1.5rem',padding:'1.25rem'}}>
         <div style={{position:'relative',flex:1,maxWidth:600}}>
-          <input type="text" placeholder="FILTRAR POR CÓDIGO, UBICACIÓN, OP O PKG..."
+          <input type="text" placeholder="FILTRAR POR CÓDIGO, UBICACIÓN (A-Z), OP O TALLA..."
             value={filter} onChange={e => setFilter(e.target.value)}
             style={{...inputStyle, paddingLeft: '1.5rem', textTransform: 'uppercase', height: '3.5rem', fontSize: '1rem', fontWeight: 800, letterSpacing: '0.02em'}} />
         </div>
@@ -463,55 +473,119 @@ export default function Inventory() {
               ))}
             </div>
           ) : (
-            <div style={{borderRadius:'1.5rem',border:'1px solid rgba(255,255,255,0.07)',overflow:'hidden', background: 'rgba(255,255,255,0.01)'}}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{width:'100%',borderCollapse:'collapse',minWidth:'850px'}}>
+            <div className="glass" style={{ borderRadius: '1.25rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ overflowX: 'auto', maxHeight: '680px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                   <thead>
-                    <tr style={{background:'rgba(255,255,255,0.04)'}}>
-                      {['UBICACIÓN','CÓDIGO / SKU','TALLA','STOCK','ORDEN DE PROCESO','FECHA INGRESO','ESTADO'].map(h=>(
-                        <th key={h} style={{padding:'1.25rem 1.5rem',textAlign:'left',color:'#64748b',fontWeight:1000,fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.15em',whiteSpace:'nowrap'}}>{h}</th>
-                      ))}
+                    <tr style={{ background: '#0b1120', position: 'sticky', top: 0, zIndex: 10, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'left', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>UBICACIÓN (A-Z)</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'left', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>CÓDIGO INTERNO & DESCRIPCIÓN</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TALLA</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>STOCK FÍSICO</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ORDEN (OP)</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PACKAGE ID</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>FECHA INGRESO</th>
+                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#64748b', fontWeight: 900, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ESTADO</th>
                     </tr>
                   </thead>
-                <tbody>
-                  {filteredInv.map((item,i)=>(
-                    <tr key={item.id} style={{borderTop:'1px solid rgba(255,255,255,0.05)',background:i%2===0?'transparent':'rgba(255,255,255,0.01)', transition: 'background 0.2s'}}
-                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}
-                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'transparent':'rgba(255,255,255,0.01)'}
-                    >
-                      <td style={{padding:'1.25rem 1.5rem'}}>
-                        <span style={{fontWeight:1000,color:'white',fontSize:'1.35rem', letterSpacing: '-0.02em'}}>{item.locations?.name || 'SIN UBICACIÓN'}</span>
+                  <tbody>
+                    {filteredInv.map((item, i) => (
+                      <tr
+                        key={item.id}
+                        style={{
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'}
+                      >
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            background: 'rgba(2, 132, 199, 0.15)',
+                            border: '1px solid rgba(2, 132, 199, 0.3)',
+                            borderRadius: '0.5rem',
+                            padding: '0.25rem 0.6rem',
+                            color: '#38bdf8',
+                            fontWeight: 900,
+                            fontSize: '0.82rem',
+                            fontFamily: 'monospace'
+                          }}>
+                            {item.locations?.name || 'SIN UBICACIÓN'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <div style={{ fontFamily: 'monospace', fontWeight: 900, color: 'white', fontSize: '0.78rem' }}>
+                            {item.products?.code}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.products?.description}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                          <span style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '0.4rem',
+                            padding: '0.2rem 0.55rem',
+                            color: 'white',
+                            fontWeight: 900,
+                            fontSize: '0.75rem'
+                          }}>
+                            {item.talla}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                          <span style={{ fontWeight: 900, color: '#22c55e', fontSize: '0.9rem' }}>
+                            {item.quantity}
+                          </span>
+                          <span style={{ fontSize: '0.6rem', color: '#64748b', marginLeft: '3px' }}>PZ</span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#38bdf8', fontFamily: 'monospace', fontWeight: 800 }}>
+                          {item.op || '—'}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.68rem' }}>
+                          {item.package_id || '—'}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#64748b', fontSize: '0.68rem' }}>
+                          {item.entry_date ? new Date(item.entry_date).toLocaleDateString('es-MX') : '—'}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                          <span style={{
+                            fontSize: '0.6rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '0.4rem',
+                            background: item.is_partial ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                            border: item.is_partial ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid rgba(34, 197, 94, 0.3)',
+                            color: item.is_partial ? '#facc15' : '#4ade80',
+                          }}>
+                            {item.is_partial ? 'PARCIAL' : 'COMPLETO'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: '#0b1120', position: 'sticky', bottom: 0, zIndex: 10, borderTop: '2px solid rgba(14,165,233,0.4)', fontWeight: 900 }}>
+                      <td style={{ padding: '0.85rem 1rem', color: '#38bdf8' }}>
+                        TOTAL: {filteredInv.length} REGISTROS (A-Z)
                       </td>
-                      <td style={{padding:'1.25rem 1.5rem'}}>
-                        <p style={{fontWeight:1000,color:'#EF4444',fontSize:'1rem', letterSpacing: '0.02em'}}>{item.products?.code}</p>
-                        <p style={{fontSize:'0.75rem',color:'#64748b',maxWidth:300,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap', fontWeight: 800, textTransform: 'uppercase'}}>{item.products?.description}</p>
+                      <td colSpan={2} style={{ padding: '0.85rem 1rem', color: '#94a3b8', textAlign: 'right' }}>
+                        SUMA TOTAL EN ALMACÉN:
                       </td>
-                      <td style={{padding:'1.25rem 1.5rem'}}>
-                        <span style={{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:'0.5rem',padding:'0.4rem 1rem',color:'white',fontWeight:1000, fontSize: '1rem'}}>{item.talla}</span>
+                      <td style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#22c55e', fontSize: '1rem' }}>
+                        {totalQuantity.toLocaleString()} PZAS
                       </td>
-                      <td style={{padding:'1.25rem 1.5rem'}}>
-                        <span style={{fontWeight:1000,color:'white',fontSize:'2rem', lineHeight: 1}}>{item.quantity}</span>
-                        <span style={{fontSize:'0.8rem',color:'#475569',marginLeft:4, fontWeight: 900}}>PZ</span>
-                      </td>
-                      <td style={{padding:'1.25rem 1.5rem',color:'#94a3b8',fontSize:'1rem', fontWeight: 1000}}>{item.op||'—'}</td>
-                      <td style={{padding:'1.25rem 1.5rem',color:'#64748b',fontSize:'0.85rem',whiteSpace:'nowrap', fontWeight: 900}}>
-                        {new Date(item.entry_date).toLocaleDateString('es-MX')}
-                      </td>
-                      <td style={{padding:'1.25rem 1.5rem'}}>
-                        <span style={{
-                          fontSize:'0.65rem',fontWeight:1000,textTransform:'uppercase',padding:'0.4rem 0.8rem',borderRadius:'0.75rem',
-                          background:item.is_partial?'rgba(234,179,8,0.15)':'rgba(34,197,94,0.15)',
-                          border:item.is_partial?'1px solid rgba(234,179,8,0.3)':'1px solid rgba(34,197,94,0.3)',
-                          color:item.is_partial?'#FBBF24':'#4ADE80',
-                        }}>{item.is_partial?'PARCIAL':'COMPLETA'}</span>
-                      </td>
+                      <td colSpan={4}></td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </tfoot>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )}
           {!loading && filteredInv.length===0 && (
             <div style={{textAlign:'center',padding:'6rem',border:'1px dashed rgba(255,255,255,0.1)',borderRadius:'2rem', background: 'rgba(255,255,255,0.01)'}}>
               <h4 style={{fontWeight:1000,color:'white', textTransform: 'uppercase', fontSize: '1.5rem', marginBottom: '1rem', letterSpacing: '0.1em'}}>SIN COINCIDENCIAS DISPONIBLES</h4>

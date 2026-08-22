@@ -1971,17 +1971,17 @@ export default function ExternalProcesses() {
           </div>
 
           {/* Records Table */}
-          <div style={{
-            background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.5rem',
-            overflow: 'hidden', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column'
+          <div className="glass" style={{
+            borderRadius: '1.25rem', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)',
+            display: 'flex', flexDirection: 'column'
           }}>
             {/* Table Top Counter Banner */}
             <div style={{
-              padding: '0.85rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+              padding: '0.85rem 1.25rem', background: '#0b1120', borderBottom: '1px solid rgba(255,255,255,0.08)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem'
             }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 1000, color: 'white', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <LayoutDashboard size={15} color="#3b82f6" />
+                <LayoutDashboard size={15} color="#38bdf8" />
                 LISTADO DE PEDIDOS: <b style={{ color: '#38bdf8' }}>{filteredRecords.length} ÓRDENES EN TABLA</b>
                 <span style={{ fontSize: '0.65rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '0.15rem 0.5rem', borderRadius: '0.4rem', fontWeight: 900 }}>
                   {activeFilteredRecords.length} ACTIVAS
@@ -1997,17 +1997,18 @@ export default function ExternalProcesses() {
               </span>
             </div>
 
-            <div style={{ overflowX: 'auto', width: '100%' }}>
-              <div style={{ minWidth: canSeeCosts ? '1380px' : '1260px' }}>
+            <div style={{ overflowX: 'auto', width: '100%', maxHeight: '680px' }}>
+              <div style={{ minWidth: canSeeCosts ? '1420px' : '1300px' }}>
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: canSeeCosts 
-                    ? 'minmax(110px, 1.1fr) minmax(110px, 1fr) minmax(70px, 0.6fr) minmax(180px, 2fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) minmax(110px, 1fr) minmax(105px, 1fr) minmax(290px, 1.8fr)' 
-                    : 'minmax(120px, 1.2fr) minmax(120px, 1.1fr) minmax(75px, 0.7fr) minmax(200px, 2.2fr) minmax(120px, 1.2fr) minmax(120px, 1.2fr) minmax(115px, 1.1fr) minmax(290px, 1.9fr)',
+                    ? 'minmax(120px, 1.2fr) minmax(130px, 1.2fr) minmax(75px, 0.6fr) minmax(200px, 2fr) minmax(115px, 1fr) minmax(115px, 1fr) minmax(115px, 1fr) minmax(110px, 1fr) minmax(320px, 2.1fr)' 
+                    : 'minmax(130px, 1.3fr) minmax(140px, 1.3fr) minmax(80px, 0.7fr) minmax(220px, 2.2fr) minmax(125px, 1.1fr) minmax(125px, 1.1fr) minmax(125px, 1.1fr) minmax(320px, 2.2fr)',
                   gap: '0.75rem',
                   alignItems: 'center',
-                  padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.08)',
-                  fontSize: '0.65rem', fontWeight: 1000, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em'
+                  padding: '0.85rem 1.25rem', background: '#0b1120', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  fontSize: '0.68rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em',
+                  position: 'sticky', top: 0, zIndex: 10
                 }}>
                   <div style={{ minWidth: 0 }}>PEDIDO / CLIENTE</div>
                   <div style={{ minWidth: 0 }}>PROVEEDOR</div>
@@ -2017,7 +2018,7 @@ export default function ExternalProcesses() {
                   <div style={{ minWidth: 0 }}>RECEPCIÓN (2do SCAN)</div>
                   <div style={{ minWidth: 0 }}>USUARIO RECEPTOR</div>
                   {canSeeCosts && <div style={{ minWidth: 0 }}>TOTAL FACTURABLE</div>}
-                  <div style={{ minWidth: 0, textAlign: 'left' }}>ESTATUS / ETIQUETA</div>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>ESTATUS / ACCIONES</div>
                 </div>
 
                 <div>
@@ -2033,7 +2034,7 @@ export default function ExternalProcesses() {
                   ) : (
                     filteredRecords.map(r => {
                       const isCancelled = r.status === 'CANCELADO'
-                      const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#3b82f6'
+                      const statusColor = isCancelled ? '#ef4444' : r.status === 'RECIBIDO' ? '#22c55e' : r.status === 'ENTREGADO_PROVEEDOR' ? '#f59e0b' : r.status === 'PENDIENTE_ASIGNACION' ? '#a855f7' : '#38bdf8'
                       const statusText = isCancelled ? 'CANCELADO' : r.status === 'RECIBIDO' ? 'RECIBIDO EN ALMACÉN' : r.status === 'ENTREGADO_PROVEEDOR' ? 'ENTREGADO AL PROVEEDOR' : r.status === 'PENDIENTE_ASIGNACION' ? 'PEND. ASIGNACIÓN' : r.status
 
                       return (
@@ -2042,37 +2043,39 @@ export default function ExternalProcesses() {
                           style={{
                             display: 'grid',
                             gridTemplateColumns: canSeeCosts 
-                              ? 'minmax(110px, 1.1fr) minmax(110px, 1fr) minmax(70px, 0.6fr) minmax(180px, 2fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) minmax(110px, 1fr) minmax(105px, 1fr) minmax(290px, 1.8fr)' 
-                              : 'minmax(120px, 1.2fr) minmax(120px, 1.1fr) minmax(75px, 0.7fr) minmax(200px, 2.2fr) minmax(120px, 1.2fr) minmax(120px, 1.2fr) minmax(115px, 1.1fr) minmax(290px, 1.9fr)',
+                              ? 'minmax(120px, 1.2fr) minmax(130px, 1.2fr) minmax(75px, 0.6fr) minmax(200px, 2fr) minmax(115px, 1fr) minmax(115px, 1fr) minmax(115px, 1fr) minmax(110px, 1fr) minmax(320px, 2.1fr)' 
+                              : 'minmax(130px, 1.3fr) minmax(140px, 1.3fr) minmax(80px, 0.7fr) minmax(220px, 2.2fr) minmax(125px, 1.1fr) minmax(125px, 1.1fr) minmax(125px, 1.1fr) minmax(320px, 2.2fr)',
                             gap: '0.75rem',
-                            padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
-                            background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.2s',
+                            padding: '0.85rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
+                            background: isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)', transition: 'background 0.15s',
                             opacity: isCancelled ? 0.75 : 1
                           }}
+                          onMouseEnter={e => e.currentTarget.style.background = isCancelled ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.03)'}
+                          onMouseLeave={e => e.currentTarget.style.background = isCancelled ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.01)'}
                         >
                           {/* Pedido / Cliente */}
                           <div style={{ minWidth: 0 }}>
-                            <span style={{ fontSize: '0.95rem', color: isCancelled ? '#94a3b8' : '#ef4444', fontWeight: 1000, background: isCancelled ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.1)', padding: '0.25rem 0.6rem', borderRadius: '0.5rem', textDecoration: isCancelled ? 'line-through' : 'none', display: 'inline-block' }}>
+                            <span style={{ fontSize: '0.9rem', color: isCancelled ? '#94a3b8' : '#38bdf8', fontWeight: 1000, background: isCancelled ? 'rgba(255,255,255,0.05)' : 'rgba(2,132,199,0.15)', border: isCancelled ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(2,132,199,0.3)', padding: '0.2rem 0.55rem', borderRadius: '0.5rem', textDecoration: isCancelled ? 'line-through' : 'none', display: 'inline-block', fontFamily: 'monospace' }}>
                               #{r.pedido_num}
                             </span>
-                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginTop: '0.25rem', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.2 }}>
+                            <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 800, marginTop: '0.25rem', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
                               {r.cliente}
                             </div>
                           </div>
 
                           {/* Proveedor */}
-                          <div style={{ minWidth: 0, fontSize: '0.85rem', color: r.proveedor_nombre ? 'white' : '#64748b', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
+                          <div style={{ minWidth: 0, fontSize: '0.8rem', color: r.proveedor_nombre ? 'white' : '#64748b', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
                             {r.proveedor_nombre || 'SIN ASIGNAR'}
                           </div>
 
                           {/* Piezas */}
-                          <div style={{ minWidth: 0, fontSize: '0.95rem', color: 'white', fontWeight: 1000 }}>
-                            {r.total_piezas} <span style={{ fontSize: '0.7rem', color: '#64748b' }}>PZ</span>
+                          <div style={{ minWidth: 0, fontSize: '0.9rem', color: 'white', fontWeight: 1000 }}>
+                            {r.total_piezas} <span style={{ fontSize: '0.65rem', color: '#64748b' }}>PZ</span>
                           </div>
 
                           {/* Proceso */}
                           <div style={{ minWidth: 0, paddingRight: '0.25rem' }}>
-                            <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.35 }}>
+                            <div style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.35 }}>
                               {r.proceso_nombre}
                             </div>
                             {r.observaciones && (
@@ -2083,45 +2086,45 @@ export default function ExternalProcesses() {
                           </div>
 
                           {/* Fecha Salida (1er Escaneo) */}
-                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: r.fecha_salida ? '#f59e0b' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
+                          <div style={{ minWidth: 0, fontSize: '0.72rem', color: r.fecha_salida ? '#f59e0b' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
                             {r.fecha_salida ? new Date(r.fecha_salida).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </div>
 
                           {/* Fecha Recepción (2do Escaneo) */}
-                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: r.fecha_recepcion ? '#22c55e' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
+                          <div style={{ minWidth: 0, fontSize: '0.72rem', color: r.fecha_recepcion ? '#22c55e' : '#64748b', fontWeight: 900, lineHeight: 1.25 }}>
                             {r.fecha_recepcion ? new Date(r.fecha_recepcion).toLocaleString('es-MX', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                           </div>
 
                           {/* Usuario Receptor */}
-                          <div style={{ minWidth: 0, fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
+                          <div style={{ minWidth: 0, fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 900, textTransform: 'uppercase', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: 1.25 }}>
                             {r.user_recepcion || '—'}
                           </div>
 
                           {/* Costo (Solo si tiene permisos) */}
                           {canSeeCosts && (
-                            <div style={{ minWidth: 0, fontSize: '0.85rem', color: isCancelled ? '#94a3b8' : '#22c55e', fontWeight: 1000, textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                            <div style={{ minWidth: 0, fontSize: '0.82rem', color: isCancelled ? '#94a3b8' : '#22c55e', fontWeight: 1000, textDecoration: isCancelled ? 'line-through' : 'none' }}>
                               ${(r.total_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                             </div>
                           )}
 
-                          {/* Estatus & Actions (Botón X y Botón Impresora) */}
-                          <div style={{ minWidth: '280px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', flexWrap: 'nowrap' }}>
-                            <div style={{ minWidth: 0, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                          {/* Estatus & Actions (Botón X y Botón Impresora con espaciado gap: 0.75rem) */}
+                          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '0.75rem', flexWrap: 'nowrap' }}>
+                            <div style={{ minWidth: 0, flexShrink: 1, display: 'flex', flexDirection: 'column' }}>
                               <span style={{
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem 0.65rem', borderRadius: '0.6rem',
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem 0.6rem', borderRadius: '0.5rem',
                                 background: `${statusColor}15`, color: statusColor, border: `1px solid ${statusColor}30`,
-                                fontSize: '0.65rem', fontWeight: 1000, textTransform: 'uppercase', whiteSpace: 'nowrap'
+                                fontSize: '0.62rem', fontWeight: 1000, textTransform: 'uppercase', whiteSpace: 'nowrap'
                               }}>
                                 {statusText}
                               </span>
                               {isCancelled && r.motivo_cancelacion && (
-                                <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`Motivo: ${r.motivo_cancelacion}`}>
+                                <span style={{ fontSize: '0.6rem', color: '#f87171', fontWeight: 800, marginTop: '2px', wordBreak: 'break-word', overflowWrap: 'break-word', lineHeight: 1.2 }} title={`Motivo: ${r.motivo_cancelacion}`}>
                                   Motivo: {r.motivo_cancelacion}
                                 </span>
                               )}
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                               {/* Botón de Cancelación (X) - Requerimiento 1 */}
                               {!isCancelled && (
                                 <button
@@ -2190,12 +2193,12 @@ export default function ExternalProcesses() {
             {/* Table Bottom Footer Summary */}
             {filteredRecords.length > 0 && (
               <div style={{
-                padding: '0.85rem 1.25rem', background: 'rgba(0,0,0,0.4)', borderTop: '1px solid rgba(255,255,255,0.08)',
+                padding: '0.85rem 1.25rem', background: '#0b1120', borderTop: '2px solid rgba(14,165,233,0.4)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
-                fontSize: '0.72rem', fontWeight: 900, color: '#94a3b8'
+                fontSize: '0.72rem', fontWeight: 900, color: '#94a3b8', position: 'sticky', bottom: 0, zIndex: 10
               }}>
                 <div>
-                  MOSTRANDO <b style={{ color: 'white' }}>{filteredRecords.length} DE {records.length} ÓRDENES</b> EN SECCIÓN <b style={{ color: '#ef4444' }}>{activeSection}</b>
+                  MOSTRANDO <b style={{ color: 'white' }}>{filteredRecords.length} DE {records.length} ÓRDENES</b> EN SECCIÓN <b style={{ color: '#38bdf8' }}>{activeSection}</b>
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   <span>TOTAL PIEZAS: <b style={{ color: '#38bdf8' }}>{totalPiecesCount.toLocaleString()} PZ</b></span>

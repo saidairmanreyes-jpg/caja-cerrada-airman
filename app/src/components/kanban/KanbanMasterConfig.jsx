@@ -171,9 +171,11 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
   const [threshFilterWh, setThreshFilterWh] = useState('ALL')
   const [editingThresh, setEditingThresh] = useState(null)
 
-  // ── State for Suppliers ──
+  // ── State for Suppliers (Maquileros, Telas, Avíos) ──
   const [suppliers, setSuppliers] = useState([])
   const [supplierModal, setSupplierModal] = useState(null)
+  const [supplierFilterType, setSupplierFilterType] = useState('ALL') // 'ALL' | 'MAQUILERO' | 'TELA' | 'AVÍO'
+  const [supplierSearch, setSupplierSearch] = useState('')
 
   // ── State for Multidirectional Routing ──
   const [routingRules, setRoutingRules] = useState([])
@@ -388,20 +390,28 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
     const samples = [
       {
         id: 'SUP-001',
+        type: 'MAQUILERO',
         name: 'CONFECCIONES Y MAQUILAS DEL NORTE',
-        contact: 'Ing. Carlos Mendoza (81-8392-1100)',
+        contact: 'Ing. Carlos Mendoza',
+        phone: '81-8392-1100',
+        email: 'cmendoza@maquilasnorte.com',
+        address: 'Av. Industrial 402, Monterrey, N.L.',
         specialty: 'Playeras Polo y Cuello Redondo',
         weekly_capacity: 5000,
         daily_capacity: 1000,
         lead_time_days: 7,
         logistics_days: 2,
         status: 'ACTIVO',
-        notes: 'Taller principal de polo en Monterrey'
+        notes: 'Taller principal de confección polo en Monterrey'
       },
       {
         id: 'SUP-002',
+        type: 'MAQUILERO',
         name: 'TALLERES TEXTILES PUEBLA',
-        contact: 'Lic. Martha Juárez (22-2244-8899)',
+        contact: 'Lic. Martha Juárez',
+        phone: '22-2244-8899',
+        email: 'mjuarez@textilespuebla.mx',
+        address: 'Parque Industrial 2000, Puebla, Pue.',
         specialty: 'Camisería Fina y Popelina',
         weekly_capacity: 3500,
         daily_capacity: 700,
@@ -412,8 +422,12 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
       },
       {
         id: 'SUP-003',
+        type: 'MAQUILERO',
         name: 'MAQUILADORA GABARDINAS DEL BAJÍO',
-        contact: 'Roberto Garza (47-7123-4567)',
+        contact: 'Roberto Garza',
+        phone: '47-7123-4567',
+        email: 'rgarza@gabardinasbajio.com',
+        address: 'Blvd. Aeropuerto 1500, León, Gto.',
         specialty: 'Pantalones y Gabardinas Pesadas',
         weekly_capacity: 4000,
         daily_capacity: 800,
@@ -421,6 +435,38 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         logistics_days: 2,
         status: 'ACTIVO',
         notes: 'Línea de confección y presillado pesado'
+      },
+      {
+        id: 'SUP-004',
+        type: 'TELA',
+        name: 'TELAS INDUSTRIALES DE MÉXICO S.A. DE C.V.',
+        contact: 'Ing. Fernando Valdés',
+        phone: '55-5341-9900',
+        email: 'ventas@telasindustriales.mx',
+        address: 'Calz. Vallejo 1100, CDMX',
+        specialty: 'Gabardina 8.5 oz, Mezclilla 14 oz, Piqué 100% Algodón, Popelina Stretch',
+        weekly_capacity: 25000,
+        daily_capacity: 5000,
+        lead_time_days: 5,
+        logistics_days: 1,
+        status: 'ACTIVO',
+        notes: 'Proveedor principal de rollos de gabardina y tejido de punto peinado'
+      },
+      {
+        id: 'SUP-005',
+        type: 'AVÍO',
+        name: 'DISTRIBUIDORA NACIONAL DE AVÍOS Y FORNITURAS',
+        contact: 'Lic. Sofía Alemán',
+        phone: '33-3619-7700',
+        email: 'saleman@aviosnacionales.com',
+        address: 'Zona Industrial 3, Guadalajara, Jal.',
+        specialty: 'Cierres Latón #5, Botones Metal Troquelados, Elásticos 40mm, Hilos 40/2',
+        weekly_capacity: 50000,
+        daily_capacity: 10000,
+        lead_time_days: 3,
+        logistics_days: 1,
+        status: 'ACTIVO',
+        notes: 'Suministro de cierres, botones, broches y etiquetas tejidas por millar'
       }
     ]
     for (const s of samples) {
@@ -1013,6 +1059,18 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
                         (t.talla || '').toLowerCase().includes(threshSearch.toLowerCase())
     const matchWh = threshFilterWh === 'ALL' || t.warehouse === threshFilterWh
     return matchSearch && matchWh
+  })
+
+  // Filtered Suppliers by Type (Maquilero, Tela, Avío) and Search
+  const filteredSuppliers = suppliers.filter(s => {
+    const matchSearch = (s.name || '').toLowerCase().includes(supplierSearch.toLowerCase()) ||
+                        (s.specialty || '').toLowerCase().includes(supplierSearch.toLowerCase()) ||
+                        (s.contact || '').toLowerCase().includes(supplierSearch.toLowerCase()) ||
+                        (s.phone || '').toLowerCase().includes(supplierSearch.toLowerCase()) ||
+                        (s.email || '').toLowerCase().includes(supplierSearch.toLowerCase())
+    const sType = s.type || 'MAQUILERO'
+    const matchType = supplierFilterType === 'ALL' || sType === supplierFilterType
+    return matchSearch && matchType
   })
 
   // Group ERP items by (code + talla) for the Multi-Warehouse Consolidated Matrix View
@@ -1636,22 +1694,40 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 3: Catálogo de Proveedores / Maquileros ── */}
+      {/* ── TAB 3: Catálogo de Proveedores (Maquileros, Telas y Avíos) ── */}
       {/* ══════════════════════════════════════════════════════════════════════════ */}
       {subTab === 'suppliers' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="glass" style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Top Filter and Action Bar */}
+          <div className="glass" style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', textTransform: 'uppercase' }}>
-                DIRECTORIO DE MAQUILEROS Y PROVEEDORES DE CONFECCIÓN
+                DIRECTORIO DE PROVEEDORES (CONFECCIÓN, TELAS Y AVÍOS)
               </h3>
               <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-                CONFIGURA CAPACIDADES SEMANALES, LEAD TIMES DE CONFECCIÓN Y TIEMPOS DE TRASLADO LOGÍSTICO.
+                GESTIONA MAQUILEROS Y PROVEEDORES DE MATERIA PRIMA CON TIEMPOS DE PRODUCCIÓN, CONTACTO Y LOGÍSTICA.
               </p>
             </div>
 
             <button
-              onClick={() => setSupplierModal({ isNew: true, data: { name: '', contact: '', specialty: '', weekly_capacity: 3000, daily_capacity: 600, lead_time_days: 7, logistics_days: 1, status: 'ACTIVO', notes: '' } })}
+              onClick={() => setSupplierModal({
+                isNew: true,
+                data: {
+                  type: 'MAQUILERO',
+                  name: '',
+                  contact: '',
+                  phone: '',
+                  email: '',
+                  address: '',
+                  specialty: '',
+                  weekly_capacity: 3000,
+                  daily_capacity: 600,
+                  lead_time_days: 7,
+                  logistics_days: 1,
+                  status: 'ACTIVO',
+                  notes: ''
+                }
+              })}
               disabled={!canEdit}
               style={{
                 background: '#0284c7',
@@ -1664,73 +1740,153 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
                 cursor: canEdit ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
               }}
             >
-              <Plus size={16} /> REGISTRAR NUEVO MAQUILERO
+              <Plus size={16} /> + REGISTRAR NUEVO PROVEEDOR
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
-            {suppliers.map(s => (
-              <div key={s.id} className="glass" style={{ borderRadius: '1.25rem', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.4rem', background: s.status === 'ACTIVO' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: s.status === 'ACTIVO' ? '#22c55e' : '#ef4444' }}>
-                      {s.status}
-                    </span>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>
-                      {s.name}
-                    </h4>
-                    <p style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 700, marginTop: '0.1rem' }}>
-                      {s.specialty || 'Confección General'}
-                    </p>
+          {/* Search & Category Filter Chips */}
+          <div className="glass" style={{ padding: '0.85rem 1.25rem', borderRadius: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', marginRight: '0.25rem' }}>FILTRAR POR TIPO:</span>
+              {[
+                { id: 'ALL', label: `TODOS (${suppliers.length})` },
+                { id: 'MAQUILERO', label: `👔 MAQUILEROS (${suppliers.filter(s => (s.type || 'MAQUILERO') === 'MAQUILERO').length})` },
+                { id: 'TELA', label: `🧵 PROV. TELAS (${suppliers.filter(s => s.type === 'TELA').length})` },
+                { id: 'AVÍO', label: `🔘 PROV. AVÍOS (${suppliers.filter(s => s.type === 'AVÍO').length})` }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setSupplierFilterType(f.id)}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.68rem',
+                    fontWeight: 900,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: supplierFilterType === f.id ? '#0284c7' : 'rgba(255,255,255,0.05)',
+                    color: supplierFilterType === f.id ? 'white' : '#94a3b8',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ position: 'relative', width: '260px' }}>
+              <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                placeholder="BUSCAR PROVEEDOR, CONTACTO O INSUMO..."
+                value={supplierSearch}
+                onChange={(e) => setSupplierSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '0.65rem',
+                  padding: '0.45rem 0.75rem 0.45rem 2.2rem',
+                  color: 'white',
+                  fontSize: '0.7rem',
+                  outline: 'none',
+                  textTransform: 'uppercase'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Suppliers Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
+            {filteredSuppliers.map(s => {
+              const isMaquila = !s.type || s.type === 'MAQUILERO'
+              const isFabric = s.type === 'TELA'
+              const isTrim = s.type === 'AVÍO'
+
+              const badgeColor = isFabric ? '#38bdf8' : isTrim ? '#facc15' : '#818cf8'
+              const badgeBg = isFabric ? 'rgba(56, 189, 248, 0.15)' : isTrim ? 'rgba(250, 204, 21, 0.15)' : 'rgba(129, 140, 248, 0.15)'
+              const badgeBorder = isFabric ? 'rgba(56, 189, 248, 0.3)' : isTrim ? 'rgba(250, 204, 21, 0.3)' : 'rgba(129, 140, 248, 0.3)'
+              const badgeLabel = isFabric ? '🧵 PROVEEDOR DE TELAS' : isTrim ? '🔘 PROVEEDOR DE AVÍOS' : '👔 MAQUILERO (CONFECCIÓN)'
+
+              return (
+                <div key={s.id} className="glass" style={{ borderRadius: '1.25rem', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.62rem', fontWeight: 900, padding: '0.2rem 0.55rem', borderRadius: '0.4rem', background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
+                          {badgeLabel}
+                        </span>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.4rem', background: s.status === 'ACTIVO' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: s.status === 'ACTIVO' ? '#22c55e' : '#ef4444' }}>
+                          {s.status}
+                        </span>
+                      </div>
+
+                      <h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', marginTop: '0.5rem' }}>
+                        {s.name}
+                      </h4>
+                      <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, marginTop: '0.15rem' }}>
+                        {s.specialty || (isFabric ? 'Suministro de Telas' : isTrim ? 'Suministro de Avíos' : 'Confección General')}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <button
+                        onClick={() => setSupplierModal({ isNew: false, data: { ...s } })}
+                        disabled={!canEdit}
+                        style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.4rem', borderRadius: '0.5rem', cursor: canEdit ? 'pointer' : 'not-allowed' }}
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSupplier(s.id, s.name)}
+                        disabled={!canEdit}
+                        style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '0.4rem', borderRadius: '0.5rem', cursor: canEdit ? 'pointer' : 'not-allowed' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
-                    <button
-                      onClick={() => setSupplierModal({ isNew: false, data: { ...s } })}
-                      disabled={!canEdit}
-                      style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '0.4rem', borderRadius: '0.5rem', cursor: canEdit ? 'pointer' : 'not-allowed' }}
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSupplier(s.id, s.name)}
-                      disabled={!canEdit}
-                      style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '0.4rem', borderRadius: '0.5rem', cursor: canEdit ? 'pointer' : 'not-allowed' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  {/* Capacities & Lead Times */}
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.75rem', padding: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.7rem' }}>
+                    <div>
+                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO PRODUCCIÓN / DESPACHO</span>
+                      <span style={{ color: '#f59e0b', fontWeight: 900 }}>{s.lead_time_days || 5} días hábiles</span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO TRASLADO LOGÍSTICO</span>
+                      <span style={{ color: '#38bdf8', fontWeight: 900 }}>{s.logistics_days || 1} días</span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>LEAD TIME TOTAL ABASTECIMIENTO</span>
+                      <span style={{ color: '#22c55e', fontWeight: 900 }}>{(s.lead_time_days || 5) + (s.logistics_days || 1)} días</span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>CAPACIDAD SEMANAL</span>
+                      <span style={{ color: '#f1f5f9', fontWeight: 900 }}>{s.weekly_capacity?.toLocaleString() || 'N/A'} {isFabric ? 'mts' : 'pzas'}</span>
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.2rem', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.5rem' }}>
+                    {s.contact && <div><strong style={{ color: '#e2e8f0' }}>Contacto:</strong> {s.contact}</div>}
+                    {s.phone && <div><strong style={{ color: '#e2e8f0' }}>Teléfono:</strong> <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>{s.phone}</span></div>}
+                    {s.email && <div><strong style={{ color: '#e2e8f0' }}>Correo:</strong> {s.email}</div>}
+                    {s.address && <div><strong style={{ color: '#e2e8f0' }}>Dirección:</strong> {s.address}</div>}
                   </div>
                 </div>
+              )
+            })}
 
-                <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '0.75rem', padding: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.7rem' }}>
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.6rem', display: 'block' }}>CAPACIDAD SEMANAL</span>
-                    <span style={{ color: '#f1f5f9', fontWeight: 900 }}>{s.weekly_capacity?.toLocaleString()} pzas</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.6rem', display: 'block' }}>CAPACIDAD DIARIA</span>
-                    <span style={{ color: '#f1f5f9', fontWeight: 900 }}>{s.daily_capacity?.toLocaleString()} pzas/día</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.6rem', display: 'block' }}>LEAD TIME CONFECCIÓN</span>
-                    <span style={{ color: '#f59e0b', fontWeight: 900 }}>{s.lead_time_days} días hábiles</span>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.6rem', display: 'block' }}>TIEMPO TRASLADO</span>
-                    <span style={{ color: '#38bdf8', fontWeight: 900 }}>{s.logistics_days} días</span>
-                  </div>
-                </div>
-
-                {s.contact && (
-                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-                    <strong>Contacto:</strong> {s.contact}
-                  </div>
-                )}
+            {filteredSuppliers.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <p style={{ fontWeight: 800, textTransform: 'uppercase' }}>NO SE ENCONTRARON PROVEEDORES EN ESTA CATEGORÍA</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -3153,8 +3309,12 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
 function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
   const [form, setForm] = useState({
     id: modalState.data.id || '',
+    type: modalState.data.type || 'MAQUILERO',
     name: modalState.data.name || '',
     contact: modalState.data.contact || '',
+    phone: modalState.data.phone || '',
+    email: modalState.data.email || '',
+    address: modalState.data.address || '',
     specialty: modalState.data.specialty || '',
     weekly_capacity: modalState.data.weekly_capacity || 3000,
     daily_capacity: modalState.data.daily_capacity || 600,
@@ -3164,6 +3324,9 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
     notes: modalState.data.notes || ''
   })
 
+  const isFabric = form.type === 'TELA'
+  const isTrim = form.type === 'AVÍO'
+
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(2, 6, 23, 0.85)', backdropFilter: 'blur(10px)',
@@ -3171,47 +3334,71 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
     }}>
       <div style={{
         background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1.5rem',
-        maxWidth: '560px', width: '100%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem'
+        maxWidth: '650px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', textTransform: 'uppercase' }}>
-            {modalState.isNew ? 'ALTA DE MAQUILERO / PROVEEDOR' : `EDITAR PROVEEDOR: ${form.name}`}
-          </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
+          <div>
+            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>CONFIGURACIÓN DE CATÁLOGO MAESTRO</span>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+              {modalState.isNew ? 'ALTA DE NUEVO PROVEEDOR' : `EDITAR PROVEEDOR: ${form.name}`}
+            </h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.4rem', borderRadius: '0.5rem' }}>
             <X size={20} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Supplier Type Selection Buttons */}
           <div>
-            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOMBRE DEL TALLER O PROVEEDOR *</label>
-            <input
-              type="text"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value.toUpperCase() })}
-              placeholder="EJ. CONFECCIONES DEL NORTE"
-              style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}
-            />
+            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.4rem' }}>TIPO DE PROVEEDOR *</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.65rem' }}>
+              {[
+                { id: 'MAQUILERO', label: '👔 MAQUILERO (CONFECCIÓN)', color: '#818cf8', bg: 'rgba(129, 140, 248, 0.15)', border: '#818cf8' },
+                { id: 'TELA', label: '🧵 PROVEEDOR DE TELAS', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: '#38bdf8' },
+                { id: 'AVÍO', label: '🔘 PROVEEDOR DE AVÍOS', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.15)', border: '#fbbf24' }
+              ].map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setForm({ ...form, type: t.id })}
+                  style={{
+                    padding: '0.65rem 0.5rem',
+                    borderRadius: '0.75rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    background: form.type === t.id ? t.bg : 'rgba(255,255,255,0.03)',
+                    color: form.type === t.id ? t.color : '#94a3b8',
+                    border: form.type === t.id ? `2px solid ${t.border}` : '1px solid rgba(255,255,255,0.08)',
+                    textAlign: 'center'
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>ESPECIALIDAD</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOMBRE O RAZÓN SOCIAL DEL PROVEEDOR *</label>
               <input
                 type="text"
-                value={form.specialty}
-                onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                placeholder="Polo, Camisa, Pantalón..."
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value.toUpperCase() })}
+                placeholder="EJ. TELAS INDUSTRIALES DE MÉXICO"
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>ESTADO</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>ESTADO OPERATIVO</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: form.status === 'ACTIVO' ? '#22c55e' : '#ef4444', fontWeight: 900, fontSize: '0.75rem' }}
               >
                 <option value="ACTIVO">ACTIVO</option>
                 <option value="INACTIVO">INACTIVO</option>
@@ -3219,9 +3406,93 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
             </div>
           </div>
 
+          <div>
+            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+              {isFabric ? 'CATÁLOGO DE TELAS SUMINISTRADAS / ESPECIALIDAD' : isTrim ? 'CATÁLOGO DE AVÍOS / FORNITURAS SUMINISTRADAS' : 'LÍNEA DE PRENDAS / ESPECIALIDAD'}
+            </label>
+            <input
+              type="text"
+              value={form.specialty}
+              onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+              placeholder={isFabric ? 'Gabardina 8.5oz, Mezclilla 14oz, Piqué peinado...' : isTrim ? 'Cierres Latón, Botones Pasta, Elásticos...' : 'Polo, Pantalón Casual, Camisería...'}
+              style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
+            />
+          </div>
+
+          {/* Contact Details Grid */}
+          <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.85rem', borderRadius: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#38bdf8' }}>INFORMACIÓN DE CONTACTO Y UBICACIÓN</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.65rem' }}>
+              <div>
+                <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>PERSONA DE CONTACTO</label>
+                <input
+                  type="text"
+                  value={form.contact}
+                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                  placeholder="Lic. / Ing. Encargado"
+                  style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.7rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>TELÉFONO DIRECTO</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="55-1234-5678"
+                  style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.7rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>CORREO ELECTRÓNICO</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="ventas@proveedor.com"
+                  style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.7rem' }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>DOMICILIO / CIUDAD / ESTADO</label>
+              <input
+                type="text"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="Calle, Número, Parque Industrial, Ciudad..."
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.7rem' }}
+              />
+            </div>
+          </div>
+
+          {/* Lead Times & Capacities */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD SEMANAL (PZAS)</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', display: 'block', marginBottom: '0.3rem' }}>
+                {isFabric || isTrim ? 'LEAD TIME DESPACHO/PRODUCCIÓN (DÍAS)' : 'LEAD TIME CONFECCIÓN (DÍAS)'}
+              </label>
+              <input
+                type="number"
+                value={form.lead_time_days}
+                onChange={(e) => setForm({ ...form, lead_time_days: e.target.value })}
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.8rem' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#38bdf8', display: 'block', marginBottom: '0.3rem' }}>TIEMPO TRASLADO LOGÍSTICO (DÍAS)</label>
+              <input
+                type="number"
+                value={form.logistics_days}
+                onChange={(e) => setForm({ ...form, logistics_days: e.target.value })}
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.8rem' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD SEMANAL ({isFabric ? 'MTS' : 'PZAS'})</label>
               <input
                 type="number"
                 value={form.weekly_capacity}
@@ -3230,7 +3501,7 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD DIARIA (PZAS)</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD DIARIA ({isFabric ? 'MTS' : 'PZAS'})</label>
               <input
                 type="number"
                 value={form.daily_capacity}
@@ -3240,47 +3511,36 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>LEAD TIME CONFECCIÓN (DÍAS)</label>
-              <input
-                type="number"
-                value={form.lead_time_days}
-                onChange={(e) => setForm({ ...form, lead_time_days: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.75rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>TIEMPO TRASLADO LOGÍSTICO (DÍAS)</label>
-              <input
-                type="number"
-                value={form.logistics_days}
-                onChange={(e) => setForm({ ...form, logistics_days: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.75rem' }}
-              />
-            </div>
-          </div>
-
           <div>
-            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>DATOS DE CONTACTO / TELÉFONO</label>
-            <input
-              type="text"
-              value={form.contact}
-              onChange={(e) => setForm({ ...form, contact: e.target.value })}
-              placeholder="Persona de contacto, teléfono o correo"
-              style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
+            <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOTAS / CONDICIONES COMERCIALES</label>
+            <textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Condiciones de pago, mínimos de compra, especificaciones técnicas..."
+              style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', resize: 'vertical' }}
             />
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem' }}>
           <button onClick={onClose} style={{ padding: '0.75rem 1.25rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', borderRadius: '0.75rem', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>
             CANCELAR
           </button>
           <button
             onClick={() => onSave(form)}
             disabled={loading}
-            style={{ padding: '0.75rem 1.5rem', background: '#0284c7', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}
+            style={{
+              padding: '0.75rem 1.75rem',
+              background: '#0284c7',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.75rem',
+              fontWeight: 900,
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
+            }}
           >
             {loading ? 'GUARDANDO...' : 'GUARDAR PROVEEDOR'}
           </button>

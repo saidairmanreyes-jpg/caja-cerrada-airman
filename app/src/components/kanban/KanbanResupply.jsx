@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { db } from '../../firebase'
 import { collection, doc, setDoc, updateDoc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore'
-import { generateResupplyPDF } from '../../utils/kanbanPDFGenerator'
+import { generateResupplyPDF, generateResupplyZip } from '../../utils/kanbanPDFGenerator'
 import KanbanJustificationModal from './KanbanJustificationModal'
 import {
   Package, AlertTriangle, ArrowRight, FileText, Download, CheckCircle2,
-  XCircle, Filter, RefreshCw, Truck, ShieldAlert, Check, Search, MapPin
+  XCircle, Filter, RefreshCw, Truck, ShieldAlert, Check, Search, MapPin, Archive
 } from 'lucide-react'
 
 export default function KanbanResupply({ canEdit = true, userEmail = '', showMessage }) {
@@ -97,7 +97,7 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
     }
   })
 
-  // ── Pull Analysis Engine: Detect Gaps where Origin HAS stock ──
+  // ── Pull Analysis Engine: Detect Gaps and calculate Multi-Origin distribution ──
   const pullAnalysis = thresholds.map(th => {
     const destKey = `${th.code}_${th.talla}_${th.warehouse}`
     const currentStock = stockMap[destKey] || 0
@@ -115,7 +115,8 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
         primary_origin: 'PLANTA',
         primary_percentage: 100,
         secondary_origin: 'MONTERREY',
-        secondary_percentage: 0
+        secondary_percentage: 0,
+        mode: 'DIRECTO'
       }
 
       const primOriginKey = routing.primary_origin === 'MTY' ? 'MONTERREY' : routing.primary_origin === 'CDMX' ? 'MEXICO' : routing.primary_origin
@@ -128,13 +129,42 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
       // If at least one origin has stock, this is a Resupply (Traspaso) Candidate!
       const canResupply = totalAvailableInOrigins > 0
 
-      // Suggested Origin distribution
-      let assignedOrigin = routing.primary_origin
-      let availableAtAssigned = primaryStock
+      // Calculate allocation per origin
+      let primaryAlloc = 0
+      let secondaryAlloc = 0
 
-      if (primaryStock < deficit && secondaryStock > 0) {
-        assignedOrigin = primaryStock > 0 ? `${routing.primary_origin} + ${routing.secondary_origin}` : routing.secondary_origin
-        availableAtAssigned = totalAvailableInOrigins
+      if (routing.mode === 'COMBINADO') {
+        const primTarget = Math.round(deficit * ((routing.primary_percentage || 70) / 100))
+        const secTarget = deficit - primTarget
+        primaryAlloc = Math.min(primaryStock, primTarget)
+        secondaryAlloc = Math.min(secondaryStock, secTarget)
+
+        // Compensate deficit if one origin has extra stock
+        if (primaryAlloc < primTarget && secondaryStock > secondaryAlloc) {
+          secondaryAlloc = Math.min(secondaryStock, deficit - primaryAlloc)
+        }
+        if (secondaryAlloc < secTarget && primaryStock > primaryAlloc) {
+          primaryAlloc = Math.min(primaryStock, deficit - secondaryAlloc)
+        }
+      } else {
+        // Direct origin routing
+        primaryAlloc = Math.min(primaryStock, deficit)
+        if (primaryAlloc < deficit && secondaryStock > 0) {
+          secondaryAlloc = Math.min(secondaryStock, deficit - primaryAlloc)
+        }
+      }
+
+      const allocations = [
+        { origin: routing.primary_origin, qty: primaryAlloc, stock: primaryStock },
+        { origin: routing.secondary_origin, qty: secondaryAlloc, stock: secondaryStock }
+      ].filter(a => a.qty > 0)
+
+      const isMultiOrigin = allocations.length > 1
+      let assignedOriginLabel = routing.primary_origin
+      if (isMultiOrigin) {
+        assignedOriginLabel = allocations.map(a => `${a.origin} (${a.qty} pz)`).join(' + ')
+      } else if (allocations.length === 1) {
+        assignedOriginLabel = allocations[0].origin
       }
 
       return {
@@ -150,8 +180,10 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
         max_stock: maxStock,
         needed: deficit,
         can_resupply: canResupply,
-        assigned_origin: assignedOrigin,
-        origin_stock: availableAtAssigned,
+        assigned_origin: assignedOriginLabel,
+        is_multi_origin: isMultiOrigin,
+        allocations: allocations.length > 0 ? allocations : [{ origin: routing.primary_origin, qty: Math.min(primaryStock, deficit), stock: primaryStock }],
+        origin_stock: totalAvailableInOrigins,
         routing_mode: routing.mode || 'DIRECTO'
       }
     }
@@ -179,7 +211,7 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ── Generar Orden de Reabastecimiento & Descarga de PDF ──
+  // ── Generar Órdenes de Traspaso Multiorigen & Descarga en PDF / .ZIP ──
   // ═══════════════════════════════════════════════════════════════════════════
   const handleGenerateTransferOrder = async () => {
     if (!canEdit) return showMessage('error', 'No tienes permisos de edición.')
@@ -188,52 +220,90 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
 
     setLoading(true)
     try {
-      // Group by Destination & Origin
-      const byDest = selectedItems.reduce((acc, item) => {
-        const dest = item.warehouse_dest
-        if (!acc[dest]) acc[dest] = []
-        acc[dest].push(item)
-        return acc
-      }, {})
+      // Group line items STRICTLY by (warehouse_dest, warehouse_origin)
+      // Any multi-origin SKU will be split into separate independent orders and separate picking documents!
+      const ordersMap = {}
 
-      for (const dest in byDest) {
-        const lines = byDest[dest].map(item => ({
-          code: item.code,
-          description: item.description,
-          talla: item.talla,
-          cajas_solicitadas: Math.min(item.needed, item.origin_stock || item.needed),
-          pzas_por_caja: 12,
-          assigned_location: 'CEDIS CENTRAL',
-          status: 'PENDIENTE'
-        }))
+      selectedItems.forEach(item => {
+        const allocs = item.allocations && item.allocations.length > 0
+          ? item.allocations
+          : [{ origin: item.assigned_origin || 'PLANTA', qty: Math.min(item.needed, item.origin_stock || item.needed) }]
 
-        const origin = byDest[dest][0].assigned_origin || 'PLANTA / MATRIZ'
-        const folio = `KAN-TRASP-${Date.now().toString().slice(-6)}`
+        allocs.forEach(alloc => {
+          if (alloc.qty <= 0) return
+          const groupKey = `${item.warehouse_dest}__${alloc.origin}`
+          if (!ordersMap[groupKey]) {
+            ordersMap[groupKey] = {
+              warehouse_origin: alloc.origin,
+              warehouse_dest: item.warehouse_dest,
+              lines: []
+            }
+          }
+          ordersMap[groupKey].lines.push({
+            code: item.code,
+            description: item.description,
+            talla: item.talla,
+            cajas_solicitadas: alloc.qty,
+            pzas_por_caja: 12,
+            assigned_location: 'CEDIS CENTRAL',
+            status: 'PENDIENTE'
+          })
+        })
+      })
+
+      const generatedOrdersList = []
+
+      for (const key in ordersMap) {
+        const group = ordersMap[key]
+        const originClean = group.warehouse_origin.replace(/[^A-Z0-9]/gi, '').toUpperCase() || 'ORIGEN'
+        const folio = `KAN-TRASP-${originClean}-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 1000)}`
 
         const orderData = {
           folio,
-          warehouse_origin: origin,
-          warehouse_dest: dest,
-          status: 'POR_SURTIR', // 'POR_SURTIR' -> 'EN_TRANSITO' -> 'COMPLETADO'
+          warehouse_origin: group.warehouse_origin,
+          warehouse_dest: group.warehouse_dest,
+          status: 'POR_SURTIR', // Independent lifecycle per origin
           created_at: new Date().toISOString(),
           created_by: userEmail || 'Planeación Kanban',
-          lines,
-          total_items: lines.reduce((acc, l) => acc + l.cajas_solicitadas, 0),
-          notes: 'Generado automáticamente por regla de inventario Pull'
+          lines: group.lines,
+          total_items: group.lines.reduce((acc, l) => acc + l.cajas_solicitadas, 0),
+          notes: `Orden de surtido independiente desde ${group.warehouse_origin} hacia ${group.warehouse_dest}`
         }
 
         await setDoc(doc(db, 'kanban_transfer_orders', folio), orderData)
-
-        // Automatically trigger PDF generation
-        generateResupplyPDF(orderData, lines)
+        generatedOrdersList.push({ order: orderData, lines: group.lines })
       }
 
-      showMessage('success', 'ORDEN(ES) DE REABASTECIMIENTO GENERADAS Y PDF DESCARGADO')
+      // If multi-origin (multiple orders created), generate and download a .ZIP bundle containing independent PDFs
+      if (generatedOrdersList.length > 1) {
+        await generateResupplyZip(generatedOrdersList, `Traspasos_Multiorigen_Kanban_${new Date().toISOString().slice(0, 10)}`)
+        showMessage('success', `${generatedOrdersList.length} ÓRDENES INDEPENDIENTES GENERADAS (PAQUETE .ZIP DESCARGADO)`)
+      } else if (generatedOrdersList.length === 1) {
+        generateResupplyPDF(generatedOrdersList[0].order, generatedOrdersList[0].lines)
+        showMessage('success', `ORDEN ${generatedOrdersList[0].order.folio} GENERADA Y HOJA DE PICKING DESCARGADA`)
+      }
+
       setSelectedGaps({})
       setActiveTab('orders')
     } catch (err) {
       console.error(err)
-      showMessage('error', 'Error al generar orden: ' + err.message)
+      showMessage('error', 'Error al generar órdenes de traspaso: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Batch Export all Active Orders as ZIP
+  const handleDownloadAllActiveOrdersZip = async () => {
+    const active = transferOrders.filter(o => o.status !== 'CANCELADO_JUSTIFICADO')
+    if (active.length === 0) return showMessage('error', 'No hay órdenes activas para exportar.')
+    setLoading(true)
+    try {
+      const list = active.map(o => ({ order: o, lines: o.lines || [] }))
+      await generateResupplyZip(list, `Ordenes_Traspaso_Kanban_${new Date().toISOString().slice(0, 10)}`)
+      showMessage('success', `PAQUETE .ZIP CON ${active.length} ÓRDENES INDEPENDIENTES DESCARGADO CON ÉXITO`)
+    } catch (e) {
+      showMessage('error', 'Error al generar archivo .zip: ' + e.message)
     } finally {
       setLoading(false)
     }
@@ -536,7 +606,41 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
       {/* ── VIEW 2: Órdenes de Traspaso / Picking & Cancelación Restringida ── */}
       {/* ══════════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'orders' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Header with Batch ZIP Export */}
+          <div className="glass" style={{ padding: '1rem 1.5rem', borderRadius: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', textTransform: 'uppercase' }}>
+                MONITOR DE ÓRDENES DE TRASPASO INDEPENDIENTES
+              </h3>
+              <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                Órdenes generadas por origen. Cada origen gestiona su estatus de surtido de forma autónoma.
+              </p>
+            </div>
+
+            <button
+              onClick={handleDownloadAllActiveOrdersZip}
+              disabled={loading || transferOrders.length === 0}
+              style={{
+                background: '#0284c7',
+                color: 'white',
+                border: 'none',
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.75rem',
+                fontWeight: 900,
+                fontSize: '0.72rem',
+                cursor: transferOrders.length > 0 ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
+              }}
+            >
+              <Archive size={16} /> EXPORTAR TODAS LAS ÓRDENES (.ZIP)
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
           {filteredOrders.map(order => {
             const isCancelled = order.status === 'CANCELADO_JUSTIFICADO'
             const isCompleted = order.status === 'COMPLETADO'
@@ -681,6 +785,7 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
               No hay órdenes de traspaso registradas.
             </div>
           )}
+          </div>
         </div>
       )}
 
