@@ -206,7 +206,7 @@ export default function ExternalProcesses() {
   useEffect(() => {
     fetchInitialData()
 
-    // Realtime channel for external_processes
+    // 1. Realtime channel for external_processes in Supabase
     const channel1 = supabase
       .channel(`external_processes_${activeSection}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'external_processes' }, () => {
@@ -214,7 +214,7 @@ export default function ExternalProcesses() {
       })
       .subscribe()
 
-    // Realtime channel for external_suppliers
+    // 2. Realtime channel for external_suppliers in Supabase
     const channel2 = supabase
       .channel(`external_suppliers_${activeSection}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'external_suppliers' }, () => {
@@ -222,7 +222,7 @@ export default function ExternalProcesses() {
       })
       .subscribe()
 
-    // Realtime channel for external_process_types
+    // 3. Realtime channel for external_process_types in Supabase
     const channel3 = supabase
       .channel(`external_process_types_${activeSection}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'external_process_types' }, () => {
@@ -230,10 +230,22 @@ export default function ExternalProcesses() {
       })
       .subscribe()
 
+    // 4. Dual Real-time listener for Firestore external_processes (Primary / Live Sync)
+    const qProc = query(collection(db, 'external_processes'), where('section', '==', activeSection))
+    const unsubFirestore = onSnapshot(qProc, (snap) => {
+      const fsData = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }))
+      fsData.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      setRecords(prev => deduplicateRecords([...fsData, ...prev]))
+      setLoading(false)
+    }, (err) => {
+      console.warn('Firestore onSnapshot external_processes note:', err.message)
+    })
+
     return () => {
       supabase.removeChannel(channel1)
       supabase.removeChannel(channel2)
       supabase.removeChannel(channel3)
+      unsubFirestore()
     }
   }, [activeSection])
 
@@ -1839,7 +1851,10 @@ export default function ExternalProcesses() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div style={{ background: 'rgba(15,23,42,0.6)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{ fontSize: '0.65rem', fontWeight: 1000, color: '#94a3b8', textTransform: 'uppercase' }}>TOTAL ÓRDENES ACTIVAS</span>
-              <p style={{ fontSize: '1.75rem', fontWeight: 1000, color: 'white', marginTop: '0.2rem' }}>{totalOrdersCount}</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginTop: '0.2rem' }}>
+                <p style={{ fontSize: '1.75rem', fontWeight: 1000, color: 'white', margin: 0 }}>{totalOrdersCount}</p>
+                <span style={{ fontSize: '0.68rem', color: '#38bdf8', fontWeight: 900 }}>({filteredRecords.length} EN TABLA)</span>
+              </div>
             </div>
 
             <div style={{ background: 'rgba(15,23,42,0.6)', padding: '1.25rem', borderRadius: '1.25rem', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1903,7 +1918,7 @@ export default function ExternalProcesses() {
                   padding: '0.6rem 0.875rem', color: 'white', fontWeight: 800, fontSize: '0.8rem', outline: 'none', cursor: 'pointer'
                 }}
               >
-                <option value="ALL">TODOS LOS ESTATUS</option>
+                <option value="ALL">TODOS LOS ESTATUS ({records.length})</option>
                 <option value="PENDIENTE_ASIGNACION">PENDIENTE DE ASIGNACIÓN</option>
                 <option value="PENDIENTE">PENDIENTE (AUTORIZADO)</option>
                 <option value="ENTREGADO_PROVEEDOR">ENTREGADO AL PROVEEDOR</option>
@@ -1958,9 +1973,31 @@ export default function ExternalProcesses() {
           {/* Records Table */}
           <div style={{
             background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '1.5rem',
-            overflow: 'hidden', backdropFilter: 'blur(12px)'
+            overflow: 'hidden', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column'
           }}>
-            <div style={{ overflowX: 'auto' }}>
+            {/* Table Top Counter Banner */}
+            <div style={{
+              padding: '0.85rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 1000, color: 'white', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <LayoutDashboard size={15} color="#3b82f6" />
+                LISTADO DE PEDIDOS: <b style={{ color: '#38bdf8' }}>{filteredRecords.length} ÓRDENES EN TABLA</b>
+                <span style={{ fontSize: '0.65rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '0.15rem 0.5rem', borderRadius: '0.4rem', fontWeight: 900 }}>
+                  {activeFilteredRecords.length} ACTIVAS
+                </span>
+                {filteredRecords.filter(r => r.status === 'CANCELADO').length > 0 && (
+                  <span style={{ fontSize: '0.65rem', background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '0.15rem 0.5rem', borderRadius: '0.4rem', fontWeight: 900 }}>
+                    {filteredRecords.filter(r => r.status === 'CANCELADO').length} CANCELADAS
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 800 }}>
+                {filteredRecords.length === records.length ? `TOTAL DE ${records.length} REGISTROS` : `FILTRADOS ${filteredRecords.length} DE ${records.length} REGISTROS`}
+              </span>
+            </div>
+
+            <div style={{ overflowX: 'auto', width: '100%' }}>
               <div style={{ minWidth: canSeeCosts ? '1380px' : '1260px' }}>
                 <div style={{
                   display: 'grid',
@@ -1969,7 +2006,7 @@ export default function ExternalProcesses() {
                     : 'minmax(120px, 1.2fr) minmax(120px, 1.1fr) minmax(75px, 0.7fr) minmax(200px, 2.2fr) minmax(120px, 1.2fr) minmax(120px, 1.2fr) minmax(115px, 1.1fr) minmax(290px, 1.9fr)',
                   gap: '0.75rem',
                   alignItems: 'center',
-                  padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.08)',
                   fontSize: '0.65rem', fontWeight: 1000, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em'
                 }}>
                   <div style={{ minWidth: 0 }}>PEDIDO / CLIENTE</div>
@@ -1983,7 +2020,7 @@ export default function ExternalProcesses() {
                   <div style={{ minWidth: 0, textAlign: 'left' }}>ESTATUS / ETIQUETA</div>
                 </div>
 
-                <div className="custom-scrollbar" style={{ maxHeight: '550px', overflowY: 'auto' }}>
+                <div>
                   {loading ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
                       <div className="spinner" style={{ width: 24, height: 24, border: '2px solid #ef4444', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 1rem' }} />
@@ -2149,6 +2186,25 @@ export default function ExternalProcesses() {
                 </div>
               </div>
             </div>
+
+            {/* Table Bottom Footer Summary */}
+            {filteredRecords.length > 0 && (
+              <div style={{
+                padding: '0.85rem 1.25rem', background: 'rgba(0,0,0,0.4)', borderTop: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
+                fontSize: '0.72rem', fontWeight: 900, color: '#94a3b8'
+              }}>
+                <div>
+                  MOSTRANDO <b style={{ color: 'white' }}>{filteredRecords.length} DE {records.length} ÓRDENES</b> EN SECCIÓN <b style={{ color: '#ef4444' }}>{activeSection}</b>
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                  <span>TOTAL PIEZAS: <b style={{ color: '#38bdf8' }}>{totalPiecesCount.toLocaleString()} PZ</b></span>
+                  {canSeeCosts && (
+                    <span>TOTAL FACTURABLE: <b style={{ color: '#4ade80' }}>${totalCostSum.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
