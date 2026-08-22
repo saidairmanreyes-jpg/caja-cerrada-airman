@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 export const generateKanbanPDF = (order, lines) => {
   const doc = new jsPDF()
@@ -28,7 +28,7 @@ export const generateKanbanPDF = (order, lines) => {
     line.status || 'PENDIENTE'
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 55,
     head: [['#', 'Modelo', 'Talla', 'Pzas/Caja', 'Cajas Solicitadas', 'Surtido', 'Estatus']],
     body: tableRows,

@@ -61,12 +61,10 @@ const toQRDate = (d = new Date()) => {
 export default function MaquilaHacienda() {
   const { isAdmin, profile } = useAuth()
   const isMaquilaRole = profile?.role === 'maquila'
-  const [activeTab, setActiveTab] = useState(isMaquilaRole ? 'capture' : 'standards')
+  const [activeTab, setActiveTab] = useState('capture')
 
   // Tabs disponibles según rol
-  // Tabs disponibles según rol
   const tabs = [
-    ...(isAdmin ? [{ id: 'standards', label: 'ESTÁNDARES', color: '#a78bfa' }] : []),
     { id: 'capture',  label: 'ETIQUETADO', color: '#f87171' },
     ...(!isMaquilaRole ? [{ id: 'tracking', label: 'SEGUIMIENTO', color: '#fbbf24' }] : []),
     { id: 'history',  label: 'HISTORIAL', color: '#4ade80' },
@@ -95,7 +93,6 @@ export default function MaquilaHacienda() {
       </div>
 
       <div>
-        {activeTab === 'standards' && isAdmin && <MaquilaStandards />}
         {activeTab === 'capture'   && <MaquilaLabelCapture />}
         {activeTab === 'tracking'  && !isMaquilaRole && <MaquilaTracking />}
         {activeTab === 'history'   && <MaquilaHistory />}

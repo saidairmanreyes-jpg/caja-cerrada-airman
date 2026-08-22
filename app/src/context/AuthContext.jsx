@@ -30,6 +30,10 @@ const DEFAULT_PERMISSIONS = {
   maquila_consumptions: false,
   maquila_discounted: false,
   maquila_capture: false,
+  kanban: false,
+  kanban_view: false,
+  kanban_edit: false,
+  kanban_authorize_planning: false,
   admin: false,
   admin_catalog: false,
   admin_workers: false,
@@ -93,7 +97,8 @@ export function AuthProvider({ children }) {
                 external_processes_costs: true, external_processes_reports: true,
                 external_processes_arreglos: true, external_processes_serigrafia: true,
                 external_processes_bordado: true, external_processes_authorize: true,
-                external_processes_manual_quote: true
+                external_processes_manual_quote: true,
+                kanban: true, kanban_view: true, kanban_edit: true, kanban_authorize_planning: true
               },
               createdAt: new Date().toISOString()
             }

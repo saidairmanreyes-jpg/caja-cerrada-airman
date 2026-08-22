@@ -6,8 +6,7 @@ import { createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import BulkUpload from './BulkUpload'
 import LocationManager from './LocationManager'
 import AuthorizedPersonnelManager from './AuthorizedPersonnelManager'
-import MonitorSync from './MonitorSync'
-import KanbanAdmin from './KanbanAdmin'
+import StandardsManager from './StandardsManager'
 import MassLabelPrinting from './MassLabelPrinting'
 import { useAuth } from '../context/AuthContext'
 
@@ -71,6 +70,17 @@ const PERMISSION_GROUPS = [
     ]
   },
   {
+    id: 'kanban',
+    label: 'KANBAN',
+    description: 'PRODUCCIÓN Y REABASTECIMIENTO TIPO PULL',
+    color: '#0ea5e9',
+    items: [
+      { key: 'kanban_view', label: '1. SOLO CONSULTA (VISUALIZACIÓN GENERAL)' },
+      { key: 'kanban_edit', label: '2. EDICIÓN (CARGA, MODIFICACIÓN Y CANCELACIONES JUSTIFICADAS)' },
+      { key: 'kanban_authorize_planning', label: '3. 🔐 AUTORIZACIÓN DE PLANEACIÓN (BUZÓN OP Y RECHAZOS)' },
+    ]
+  },
+  {
     id: 'admin',
     label: 'ADMINISTRACIÓN',
     description: 'AJUSTES Y CONFIGURACIÓN DEL SISTEMA',
@@ -79,10 +89,9 @@ const PERMISSION_GROUPS = [
       { key: 'admin_catalog', label: 'CATÁLOGO' },
       { key: 'admin_workers', label: 'ALMACENISTAS' },
       { key: 'admin_auth', label: 'AUTORIZADOS' },
+      { key: 'admin_standards', label: 'ESTÁNDARES DE EMPAQUE' },
       { key: 'admin_bulk', label: 'CARGA MASIVA' },
-      { key: 'admin_monitor', label: 'MONITOR (SYNC)' },
       { key: 'admin_locations', label: 'UBICACIONES' },
-      { key: 'admin_kanban', label: 'KANBAN' },
       { key: 'admin_labels', label: 'ETIQUETAS' },
     ]
   }
@@ -151,14 +160,17 @@ const DEFAULT_WORKER_PERMISSIONS = {
   maquila_consumptions: false,
   maquila_discounted: false,
   maquila_capture: false,
+  kanban: false,
+  kanban_view: false,
+  kanban_edit: false,
+  kanban_authorize_planning: false,
   admin: false,
   admin_catalog: false,
   admin_workers: false,
   admin_auth: false,
+  admin_standards: false,
   admin_bulk: false,
-  admin_monitor: false,
   admin_locations: false,
-  admin_kanban: false,
   admin_labels: false,
 }
 
@@ -178,11 +190,17 @@ const ROLE_DEFAULT_PERMISSIONS = {
     external_processes_bordado: false,
     external_processes_authorize: false,
     external_processes_manual_quote: false,
+    kanban: true,
+    kanban_view: true,
+    kanban_edit: true,
+    kanban_authorize_planning: false,
   },
   sales: {
     ...DEFAULT_WORKER_PERMISSIONS,
     external_processes: true,
     external_processes_monitor: true,
+    kanban: true,
+    kanban_view: true,
   },
   maquila: {
     ...DEFAULT_WORKER_PERMISSIONS,
@@ -441,10 +459,9 @@ export default function Admin() {
     if (hasPermission('admin_catalog')) return 'catalog'
     if (hasPermission('admin_workers')) return 'workers'
     if (hasPermission('admin_auth')) return 'auth_personnel'
+    if (hasPermission('admin_standards')) return 'standards'
     if (hasPermission('admin_bulk')) return 'bulk'
-    if (hasPermission('admin_monitor')) return 'monitor_sync'
     if (hasPermission('admin_locations')) return 'locations'
-    if (hasPermission('admin_kanban')) return 'kanban'
     if (hasPermission('admin_labels')) return 'labels'
     return 'permissions'
   })
@@ -551,10 +568,9 @@ export default function Admin() {
     { id: 'catalog',       label: 'CATÁLOGO',         permKey: 'admin_catalog' },
     { id: 'workers',       label: 'ALMACENISTAS',      permKey: 'admin_workers' },
     { id: 'auth_personnel',label: 'AUTORIZADOS',       permKey: 'admin_auth' },
+    { id: 'standards',     label: 'ESTÁNDARES',        permKey: 'admin_standards' },
     { id: 'bulk',          label: 'CARGA MASIVA',   permKey: 'admin_bulk' },
-    { id: 'monitor_sync',  label: 'MONITOR',           permKey: 'admin_monitor' },
     { id: 'locations',     label: 'UBICACIONES',       permKey: 'admin_locations' },
-    { id: 'kanban',        label: 'KANBAN',            permKey: 'admin_kanban' },
     { id: 'labels',        label: 'ETIQUETAS',         permKey: 'admin_labels' },
     { id: 'permissions',   label: 'PERMISOS',          permKey: null }, // master-only
   ]
@@ -853,10 +869,10 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ── MONITOR ERP ── */}
-        {activeTab === 'monitor_sync' && (
-          <div className="animate-slide-up" style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <MonitorSync />
+        {/* ── ESTÁNDARES ── */}
+        {activeTab === 'standards' && (
+          <div className="animate-slide-up">
+            <StandardsManager />
           </div>
         )}
 
@@ -871,13 +887,6 @@ export default function Admin() {
         {activeTab === 'auth_personnel' && (
           <div className="animate-slide-up">
             <AuthorizedPersonnelManager />
-          </div>
-        )}
-
-        {/* ── KANBAN ── */}
-        {activeTab === 'kanban' && (
-          <div className="animate-slide-up">
-            <KanbanAdmin />
           </div>
         )}
 

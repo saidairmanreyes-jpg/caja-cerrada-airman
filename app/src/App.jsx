@@ -10,6 +10,7 @@ import PickingQueue from './components/PickingQueue'
 import ExternalProcesses from './components/ExternalProcesses'
 import Login from './components/Login'
 import Maquila from './components/Maquila'
+import KanbanModule from './components/kanban/KanbanModule'
 import { useAuth } from './context/AuthContext'
 import { useEffect, useState } from 'react'
 
@@ -27,6 +28,7 @@ export default function App() {
     ...(hasPermission('external_processes') ? [{ id: 'external_processes', label: 'PROCESOS EXTERNOS', icon: '🧵' }] : []),
     ...(hasPermission('inventory') ? [{ id: 'inventory', label: 'INVENTARIO', icon: '🏢' }] : []),
     ...(hasPermission('maquila') ? [{ id: 'maquila', label: 'MAQUILA', icon: '✂️' }] : []),
+    ...(hasPermission('kanban') ? [{ id: 'kanban', label: 'KANBAN', icon: '📋' }] : []),
     ...(hasAnyAdminPermission ? [{ id: 'admin', label: 'ADMIN', icon: '⚙️' }] : []),
   ]
 
@@ -209,6 +211,7 @@ export default function App() {
             {activeTab === 'external_processes' && <ExternalProcesses />}
             {activeTab === 'inventory' && <Inventory />}
             {activeTab === 'maquila' && <Maquila />}
+            {activeTab === 'kanban' && <KanbanModule />}
             {activeTab === 'admin' && <Admin />}
           </div>
         </main>
