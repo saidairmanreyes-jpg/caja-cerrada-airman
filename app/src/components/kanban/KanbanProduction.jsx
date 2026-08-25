@@ -3,10 +3,11 @@ import { db } from '../../firebase'
 import { supabase } from '../../supabaseClient'
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore'
 import { generateWorkOrderPDF, generatePurchaseOrderPDF } from '../../utils/kanbanPDFGenerator'
+import KanbanLeadTimeSimulatorModal from './KanbanLeadTimeSimulatorModal'
 import {
   Scissors, Layers, Download, CheckCircle, Clock, AlertTriangle,
   FileSpreadsheet, Plus, ExternalLink, Calendar, Truck, UserCheck, Search, Edit3,
-  Box, Package, ShieldAlert, ShoppingBag, Trash2, ArrowRight
+  Box, Package, ShieldAlert, ShoppingBag, Trash2, ArrowRight, Sparkles
 } from 'lucide-react'
 
 export default function KanbanProduction({ canEdit = true, userEmail = '', showMessage }) {
@@ -18,6 +19,8 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
   const [productionOrders, setProductionOrders] = useState([])
   const [purchaseOrders, setPurchaseOrders] = useState([])
   const [standards, setStandards] = useState([])
+  const [globalSafetyDays, setGlobalSafetyDays] = useState(30)
+  const [simulatorModalItem, setSimulatorModalItem] = useState(null)
 
   const [activeTab, setActiveTab] = useState('deficit') // 'deficit' | 'orders' | 'purchases'
   const [search, setSearch] = useState('')
@@ -32,6 +35,13 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
 
   // Real-time listeners
   useEffect(() => {
+    const unsubGlobal = onSnapshot(doc(db, 'kanban_global_config', 'parameters'), d => {
+      if (d.exists()) {
+        const data = d.data()
+        if (data.safety_stock_days) setGlobalSafetyDays(Number(data.safety_stock_days))
+      }
+    })
+
     const unsubBoms = onSnapshot(collection(db, 'kanban_boms'), snap => {
       const list = []
       snap.forEach(d => list.push({ id: d.id, ...d.data() }))
@@ -70,18 +80,21 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
       setPurchaseOrders(list)
     })
 
-    // Fetch Packing Standards from Supabase
+    // Fetch packaging standards from Supabase (Estandar de Empaque)
     const fetchStandards = async () => {
       try {
-        const { data } = await supabase.from('maquila_box_standards').select('*')
-        if (data) setStandards(data)
-      } catch (e) {
-        console.error('Error fetching standards in KanbanProduction:', e)
+        const { data, error } = await supabase.from('packaging_standards').select('*')
+        if (!error && data) {
+          setStandards(data)
+        }
+      } catch (err) {
+        console.warn('Packaging standards could not be loaded from Supabase:', err)
       }
     }
     fetchStandards()
 
     return () => {
+      unsubGlobal()
       unsubBoms()
       unsubThresh()
       unsubErp()
@@ -108,20 +121,37 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
     }
   })
 
-  // ── Calculate Production Deficits with Packaging Standards ──
+  // ── Calculate Production Deficits via Genealogía de SKU & Cumulative Lead Time ROP ──
   const productionDeficits = thresholds.map(th => {
     const destKey = `${th.code}_${th.talla}_${th.warehouse}`
     const destStock = stockMap[destKey] || 0
 
-    // Virtual stock
-    if (destStock <= (th.min_stock || 10)) {
+    // Genealogía de SKU: Determinar tipología y tiempos acumulados
+    const isFantasia = (th.description || th.code || '').toUpperCase().includes('CUADRO') ||
+      (th.description || th.code || '').toUpperCase().includes('RAYA') ||
+      (th.description || th.code || '').toUpperCase().includes('MEZCLILLA') ||
+      (th.description || th.code || '').toUpperCase().includes('DENIM')
+
+    const genealogyType = isFantasia ? 'BASE_FANTASIA_MTO' : 'BASE_CRUDA_TEÑIBLE'
+    const cumulativeLeadTime = isFantasia ? 64 : 29 // 50+4+8+2 vs 15+4+8+2
+    const safetyDays = Number(th.safety_stock_days || globalSafetyDays || 30)
+    const monthlyDemand = Number(th.monthly_consumption || (th.min_stock ? th.min_stock * 4 : 120))
+    const dailyConsumption = Math.max(0.1, monthlyDemand / 30)
+
+    // Dynamic Reorder Point Formula: ROP = (CDP * CLT) + (CDP * Safety_Days)
+    const dynamicROP = Math.round((dailyConsumption * cumulativeLeadTime) + (dailyConsumption * safetyDays))
+    const effectiveMin = th.min_stock ? Math.max(th.min_stock, dynamicROP) : dynamicROP
+    const maxStock = th.max_stock || Math.round(effectiveMin * 2.2)
+
+    // Virtual stock comparison
+    if (destStock <= effectiveMin) {
       // Check if origins (Planta / Matriz / Mty) also lack stock
       const plantaStock = stockMap[`${th.code}_${th.talla}_PLANTA`] || 0
       const matrizStock = stockMap[`${th.code}_${th.talla}_MATRIZ`] || 0
       const totalAvailable = plantaStock + matrizStock
 
       // If origin does NOT have enough stock, Detonate Production BOM Explosion!
-      const neededQty = Math.max(0, (th.max_stock || 50) - destStock)
+      const neededQty = Math.max(0, maxStock - destStock)
 
       if (totalAvailable < neededQty) {
         const bom = boms.find(b => b.code === th.code)
@@ -142,8 +172,14 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
           warehouse_dest: th.warehouse,
           dest_stock: destStock,
           origin_stock: totalAvailable,
-          min_stock: th.min_stock || 10,
-          max_stock: th.max_stock || 50,
+          min_stock: effectiveMin,
+          max_stock: maxStock,
+          dynamic_rop: dynamicROP,
+          cumulative_lead_time: cumulativeLeadTime,
+          safety_stock_days: safetyDays,
+          genealogy_type: genealogyType,
+          monthly_consumption: monthlyDemand,
+          daily_consumption: dailyConsumption,
           needed: needed,
           bom: bom || null,
           has_bom: !!bom,
@@ -253,14 +289,34 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
       const fabricMaterials = bomBreakdown.filter(m => (m.material_type || '').toUpperCase() === 'TELA')
       const trimMaterials = bomBreakdown.filter(m => (m.material_type || '').toUpperCase() === 'AVÍO' || (m.material_type || '').toUpperCase() === 'FORNITURA')
 
-      // Calculate Lead Times:
-      // Insumos lead time = max(fabric lead time, trim lead time)
-      const fabricLeadDays = fabricMaterials.length > 0 ? ((fabricSupplier.lead_time_days || 5) + (fabricSupplier.logistics_days || 1)) : 0
-      const trimLeadDays = trimMaterials.length > 0 ? ((trimSupplier.lead_time_days || 3) + (trimSupplier.logistics_days || 1)) : 0
+      // Detect Fabric Behavior (LISO vs FANTASÍA) for Strict Lead Time & Mill Rules
+      let fabricBehavior = 'LISO'
+      const fantasiaKeywords = ['CUADRO', 'MICRO CUADRO', 'RAYA', 'MICRO RAYA', 'MEZCLILLA', 'DENIM']
+      const lisoRestricted = ['GABARDINA ISABEL', 'HAWA ELASTANO', 'GABARDINA AMIN ELASTANO', 'TWILL MECHANICAL', 'WARP PIQUE', 'CLEVELAND']
+
+      fabricMaterials.forEach(f => {
+        const uName = (f.material_name || '').toUpperCase()
+        if (fantasiaKeywords.some(k => uName.includes(k))) {
+          fabricBehavior = 'FANTASIA'
+        } else if (lisoRestricted.some(k => uName.includes(k))) {
+          fabricBehavior = 'LISO'
+        }
+      })
+
+      // Calculate Lead Times based on Fabric Behavior:
+      // TIPO A LISOS: Permite Stock Crudo Greige -> Solo Teñido + Tránsito (~18 días)
+      // TIPO B FANTASÍA: Producción Cero Make-to-Order -> Compra hilo + Teñido + Urdido + Tejido + Acabado + Tránsito (~55 días)
+      const baseFabricLead = fabricBehavior === 'FANTASIA'
+        ? Number(fabricSupplier.lead_time_fantasia_days || 55)
+        : Number(fabricSupplier.lead_time_liso_days || fabricSupplier.lead_time_days || 18)
+
+      const fabricLogisticsDays = Number(fabricSupplier.logistics_days || (fabricSupplier.origin_country === 'GUATEMALA' ? 4 : 1))
+      const fabricLeadDays = fabricMaterials.length > 0 ? (baseFabricLead + fabricLogisticsDays) : 0
+      const trimLeadDays = trimMaterials.length > 0 ? ((Number(trimSupplier.lead_time_days) || 3) + (Number(trimSupplier.logistics_days) || 1)) : 0
       const insumosLeadDays = Math.max(fabricLeadDays, trimLeadDays)
 
       // Maquila / Confección lead time
-      const maquilaLeadDays = (supplier.lead_time_days || 7) + (supplier.logistics_days || 1)
+      const maquilaLeadDays = (Number(supplier.lead_time_days) || 7) + (Number(supplier.logistics_days) || 1)
 
       // Total Lead Time for Finished Production Order (Insumos + Confección + Logística)
       const totalLeadDays = insumosLeadDays + maquilaLeadDays
@@ -283,15 +339,21 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
           garments_quantity: totalGarments,
           supplier_id: fabricSupplier.id,
           supplier_name: fabricSupplier.name,
+          supplier_origin: fabricSupplier.origin_country || 'GUATEMALA',
           supplier_contact: fabricSupplier.contact || '',
           supplier_phone: fabricSupplier.phone || '',
           supplier_email: fabricSupplier.email || '',
           supplier_address: fabricSupplier.address || '',
-          lead_time_days: fabricSupplier.lead_time_days || 5,
-          logistics_days: fabricSupplier.logistics_days || 1,
+          comportamiento_tela: fabricBehavior, // 'LISO' vs 'FANTASIA'
+          allows_greige_stock: fabricBehavior === 'LISO',
+          base_fabric_lead_days: baseFabricLead,
+          logistics_days: fabricLogisticsDays,
           total_lead_time_days: fabricLeadDays,
+          post_weaving_lead_days: Number(fabricSupplier.lead_time_post_weaving_days || 14),
           required_delivery_date: new Date(Date.now() + fabricLeadDays * 86400000).toISOString().slice(0, 10),
-          status: 'BORRADOR', // 'BORRADOR' | 'SOLICITADA' | 'CONFIRMADA' | 'EN TRÁNSITO' | 'RECIBIDA'
+          status: 'BORRADOR', // 'BORRADOR' | 'SOLICITADA' | 'CONFIRMADA' | 'EN_TEJIDO' | 'SALIDA_DE_TEJIDO' | 'EN_ACABADO_TEÑIDO' | 'EN_TRANSITO' | 'RECIBIDA'
+          milestone_status: 'BORRADOR',
+          milestone_updated_at: new Date().toISOString(),
           items: fabricMaterials.map(f => {
             const qty = parseFloat(f.total_required) || 0
             const unitCost = 95.00 // costo estándar proyectado
@@ -303,13 +365,14 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
               unit: f.unit,
               unit_cost: unitCost,
               total_cost: qty * unitCost,
+              comportamiento_tela: fabricBehavior,
               notes: f.notes
             }
           }),
           total_amount: fabricMaterials.reduce((acc, f) => acc + ((parseFloat(f.total_required) || 0) * 95.00), 0),
           created_at: new Date().toISOString(),
           created_by: userEmail || 'Explosión Automática BOM',
-          notes: `Generado automáticamente por explosión de BOM para OP ${folio} (${item.code} Talla ${item.talla} - ${totalGarments} pzas)`
+          notes: `Generado automáticamente por explosión de BOM para OP ${folio} (${item.code} Talla ${item.talla} - ${totalGarments} pzas). Tipología: ${fabricBehavior === 'LISO' ? 'TIPO A LISO (Permite stock en crudo/greige)' : 'TIPO B FANTASÍA (Producción cero / MTO)'}.`
         }
         await setDoc(doc(db, 'kanban_purchase_orders', poTelaFolio), poTelaDoc)
       }
@@ -435,12 +498,54 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
   const handleUpdatePoStatus = async (folio, newStatus) => {
     if (!canEdit) return showMessage('error', 'No tienes permisos de edición.')
     try {
-      await updateDoc(doc(db, 'kanban_purchase_orders', folio), {
+      const po = purchaseOrders.find(p => p.folio === folio)
+      const postWeavingDays = Number(po?.post_weaving_lead_days || 14)
+
+      let updatePayload = {
         status: newStatus,
+        milestone_status: newStatus,
+        milestone_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         updated_by: userEmail
-      })
-      showMessage('success', `ORDEN DE COMPRA ${folio} ACTUALIZADA A ${newStatus}`)
+      }
+
+      // ⭐ HITO CLAVE: SALIDA DE TEJIDO (MOLINO GUATEMALA)
+      // Recalcular dinámicamente la fecha estimada de llegada (ETA) sumando solo los días restantes
+      if (newStatus === 'SALIDA_DE_TEJIDO' || newStatus === 'SALIDA DE TEJIDO') {
+        const recalculatedEta = new Date(Date.now() + postWeavingDays * 86400000).toISOString().slice(0, 10)
+        updatePayload = {
+          ...updatePayload,
+          status: 'SALIDA_DE_TEJIDO',
+          milestone_status: 'SALIDA_DE_TEJIDO',
+          required_delivery_date: recalculatedEta,
+          committed_delivery_date: recalculatedEta,
+          eta_recalculated_by_milestone: true,
+          eta_recalculated_at: new Date().toISOString(),
+          notes: (po?.notes || '') + `\n[${new Date().toLocaleDateString('es-MX')}] Hito 'SALIDA DE TEJIDO' confirmado en molino Guatemala. ETA dinámico recalculado al ${recalculatedEta} (+${postWeavingDays} días acabados/aduana).`
+        }
+
+        // Si está vinculado a una Orden de Producción, actualizar la fecha comprometida de la OP en el tablero Kanban
+        if (po?.op_folio) {
+          const maquilaLead = 7 + 1 // Confección + traslado local
+          const newOpCommittedDate = new Date(Date.now() + (postWeavingDays + maquilaLead) * 86400000).toISOString().slice(0, 10)
+          try {
+            await updateDoc(doc(db, 'kanban_production_orders', po.op_folio), {
+              committed_delivery_date: newOpCommittedDate,
+              fabric_milestone: 'SALIDA_DE_TEJIDO',
+              fabric_eta: recalculatedEta,
+              updated_at: new Date().toISOString()
+            })
+          } catch (errOp) {
+            console.warn('No se pudo sincronizar OP vinculada:', errOp)
+          }
+        }
+
+        showMessage('success', `HITO MOLINO GUATEMALA: SALIDA DE TEJIDO REGISTRADA. ETA RECALCULADO AL ${recalculatedEta}`)
+      } else {
+        showMessage('success', `ORDEN DE COMPRA ${folio} ACTUALIZADA A ${newStatus}`)
+      }
+
+      await updateDoc(doc(db, 'kanban_purchase_orders', folio), updatePayload)
     } catch (e) {
       console.error(e)
       showMessage('error', 'Error al actualizar estatus de Orden de Compra: ' + e.message)
@@ -629,12 +734,17 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                     border: '1px solid rgba(255,255,255,0.06)'
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div>
-                      <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '0.2rem 0.5rem', borderRadius: '0.4rem' }}>
-                        FALTANTE EN FÁBRICA
-                      </span>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', marginTop: '0.4rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '0.15rem 0.45rem', borderRadius: '0.35rem' }}>
+                          FALTANTE EN FÁBRICA
+                        </span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.35rem', background: item.genealogy_type === 'BASE_FANTASIA_MTO' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: item.genealogy_type === 'BASE_FANTASIA_MTO' ? '#f59e0b' : '#22c55e' }}>
+                          {item.genealogy_type === 'BASE_FANTASIA_MTO' ? '🧬 FANTASÍA (MTO 64d)' : '🧬 LISO (GREIGE 29d)'}
+                        </span>
+                      </div>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', marginTop: '0.35rem' }}>
                         {item.code} - {item.talla}
                       </h4>
                       <p style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
@@ -642,11 +752,31 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                       </p>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.58rem', color: '#64748b', fontWeight: 800, display: 'block' }}>REQUERIDO</span>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f59e0b' }}>
-                        {item.needed} pzas
-                      </span>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.58rem', color: '#64748b', fontWeight: 800, display: 'block' }}>REQUERIDO</span>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f59e0b' }}>
+                          {item.needed} pzas
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setSimulatorModalItem(item)}
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.15)',
+                          border: '1px solid rgba(168, 85, 247, 0.35)',
+                          color: '#c084fc',
+                          padding: '0.25rem 0.55rem',
+                          borderRadius: '0.4rem',
+                          fontWeight: 900,
+                          fontSize: '0.6rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                      >
+                        <Clock size={10} /> SIMULADOR CLT
+                      </button>
                     </div>
                   </div>
 
@@ -981,8 +1111,25 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                     <div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.62rem', fontWeight: 900, padding: '0.2rem 0.55rem', borderRadius: '0.4rem', background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
-                          {isFabric ? '🧵 OC - PROV. TELAS' : '🔘 OC - PROV. AVÍOS'}
+                          {isFabric ? '🧵 OC - MOLINO/TELA' : '🔘 OC - PROV. AVÍOS'}
                         </span>
+
+                        {isFabric && po.comportamiento_tela === 'LISO' && (
+                          <span style={{ fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.4rem', background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                            🟢 TIPO A: LISO (STOCK CRUDO)
+                          </span>
+                        )}
+
+                        {isFabric && po.comportamiento_tela === 'FANTASIA' && (
+                          <span style={{ fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.4rem', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                            🟡 TIPO B: FANTASÍA (MTO)
+                          </span>
+                        )}
+
+                        <span style={{ fontSize: '0.58rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.4rem', background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
+                          {po.supplier_origin === 'GUATEMALA' ? '🇬🇹 GUATEMALA' : '🇲🇽 MÉXICO'}
+                        </span>
+
                         <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '0.2rem 0.5rem', borderRadius: '0.4rem', background: statusBg, color: statusColor }}>
                           {po.status}
                         </span>
@@ -1038,7 +1185,7 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                       <span style={{ color: 'white', fontWeight: 900 }}>{po.supplier_name}</span>
                     </div>
                     <div>
-                      <span style={{ color: '#64748b', fontSize: '0.55rem', fontWeight: 800, display: 'block' }}>FECHA REQUERIDA ENTREGA</span>
+                      <span style={{ color: '#64748b', fontSize: '0.55rem', fontWeight: 800, display: 'block' }}>FECHA ESTIMADA LLEGADA (ETA)</span>
                       <span style={{ color: '#22c55e', fontWeight: 900 }}>{po.required_delivery_date || 'N/A'}</span>
                     </div>
                     <div>
@@ -1049,6 +1196,12 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                       <span style={{ color: '#64748b', fontSize: '0.55rem', fontWeight: 800, display: 'block' }}>CONTACTO / TEL</span>
                       <span style={{ color: '#94a3b8', fontWeight: 700 }}>{po.supplier_contact || po.supplier_phone || 'N/A'}</span>
                     </div>
+
+                    {po.eta_recalculated_by_milestone && (
+                      <div style={{ gridColumn: '1 / -1', background: 'rgba(192, 132, 252, 0.12)', border: '1px solid rgba(192, 132, 252, 0.35)', borderRadius: '0.5rem', padding: '0.4rem 0.6rem', color: '#e9d5ff', fontWeight: 900, fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        ⚡ HITO REGISTRADO: SALIDA DE TEJIDO (ETA RECALCULADO AL {po.required_delivery_date})
+                      </div>
+                    )}
                   </div>
 
                   {/* Materials Table */}
@@ -1079,109 +1232,169 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
                     </div>
                   </div>
 
-                  {/* Actions Bar */}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', flexWrap: 'wrap' }}>
-                    {isDraft && (
-                      <button
-                        onClick={() => handleUpdatePoStatus(po.folio, 'SOLICITADA')}
+                  {/* International Mill Milestones / Actions Bar */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto' }}>
+                    {/* Fast Status Transitions */}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {isDraft && (
+                        <button
+                          onClick={() => handleUpdatePoStatus(po.folio, 'SOLICITADA')}
+                          disabled={!canEdit}
+                          style={{
+                            flex: 1,
+                            background: '#0284c7',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.6rem',
+                            borderRadius: '0.6rem',
+                            fontWeight: 900,
+                            fontSize: '0.68rem',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <ArrowRight size={13} /> SOLICITAR AL PROVEEDOR
+                        </button>
+                      )}
+
+                      {isRequested && (
+                        <button
+                          onClick={() => handleUpdatePoStatus(po.folio, 'CONFIRMADA')}
+                          disabled={!canEdit}
+                          style={{
+                            flex: 1,
+                            background: '#8b5cf6',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.6rem',
+                            borderRadius: '0.6rem',
+                            fontWeight: 900,
+                            fontSize: '0.68rem',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <CheckCircle size={13} /> CONFIRMAR PEDIDO
+                        </button>
+                      )}
+
+                      {/* ⭐ BOTÓN ESPECIAL HITO MOLINO GUATEMALA: SALIDA DE TEJIDO */}
+                      {isFabric && (po.status === 'CONFIRMADA' || po.status === 'EN_TEJIDO' || po.status === 'SOLICITADA') && (
+                        <button
+                          onClick={() => handleUpdatePoStatus(po.folio, 'SALIDA_DE_TEJIDO')}
+                          disabled={!canEdit}
+                          title="Recalcula el ETA dinámicamente con base en los días restantes de acabado y aduana"
+                          style={{
+                            flex: 1,
+                            background: 'linear-gradient(135deg, #7c3aed, #c026d3)',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.6rem',
+                            borderRadius: '0.6rem',
+                            fontWeight: 900,
+                            fontSize: '0.68rem',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.35)'
+                          }}
+                        >
+                          ⭐ NOTIFICAR SALIDA DE TEJIDO (RECALCULAR ETA)
+                        </button>
+                      )}
+
+                      {(isConfirmed || po.status === 'SALIDA_DE_TEJIDO' || po.status === 'EN_ACABADO_TEÑIDO') && (
+                        <button
+                          onClick={() => handleUpdatePoStatus(po.folio, 'EN TRÁNSITO')}
+                          disabled={!canEdit}
+                          style={{
+                            flex: 1,
+                            background: '#f59e0b',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.6rem',
+                            borderRadius: '0.6rem',
+                            fontWeight: 900,
+                            fontSize: '0.68rem',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <Truck size={13} /> REGISTRAR ENVÍO EN TRÁNSITO
+                        </button>
+                      )}
+
+                      {(isTransit || po.status === 'ADUANA_FRONTERA') && (
+                        <button
+                          onClick={() => handleUpdatePoStatus(po.folio, 'RECIBIDA')}
+                          disabled={!canEdit}
+                          style={{
+                            flex: 1,
+                            background: '#16a34a',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.6rem',
+                            borderRadius: '0.6rem',
+                            fontWeight: 900,
+                            fontSize: '0.68rem',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                          }}
+                        >
+                          <CheckCircle size={13} /> MARCAR COMO RECIBIDA EN PLANTA
+                        </button>
+                      )}
+
+                      {isReceived && (
+                        <div style={{ flex: 1, textAlign: 'center', padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.6rem', color: '#22c55e', fontWeight: 900, fontSize: '0.68rem' }}>
+                          ✓ MATERIAL RECIBIDO EN PLANTA
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Milestone Selector Dropdown for Complete Tracking */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.4rem 0.6rem', borderRadius: '0.5rem' }}>
+                      <span style={{ fontSize: '0.58rem', fontWeight: 800, color: '#94a3b8', whiteSpace: 'nowrap' }}>ESTATUS / HITO:</span>
+                      <select
+                        value={po.status}
+                        onChange={(e) => handleUpdatePoStatus(po.folio, e.target.value)}
                         disabled={!canEdit}
                         style={{
                           flex: 1,
-                          background: '#0284c7',
-                          color: 'white',
-                          border: 'none',
-                          padding: '0.6rem',
-                          borderRadius: '0.6rem',
-                          fontWeight: 900,
-                          fontSize: '0.68rem',
-                          cursor: canEdit ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem'
+                          background: '#020617',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '0.4rem',
+                          padding: '0.3rem 0.5rem',
+                          color: '#38bdf8',
+                          fontWeight: 800,
+                          fontSize: '0.65rem'
                         }}
                       >
-                        <ArrowRight size={13} /> SOLICITAR AL PROVEEDOR
-                      </button>
-                    )}
-
-                    {isRequested && (
-                      <button
-                        onClick={() => handleUpdatePoStatus(po.folio, 'CONFIRMADA')}
-                        disabled={!canEdit}
-                        style={{
-                          flex: 1,
-                          background: '#8b5cf6',
-                          color: 'white',
-                          border: 'none',
-                          padding: '0.6rem',
-                          borderRadius: '0.6rem',
-                          fontWeight: 900,
-                          fontSize: '0.68rem',
-                          cursor: canEdit ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem'
-                        }}
-                      >
-                        <CheckCircle size={13} /> CONFIRMAR PEDIDO
-                      </button>
-                    )}
-
-                    {isConfirmed && (
-                      <button
-                        onClick={() => handleUpdatePoStatus(po.folio, 'EN TRÁNSITO')}
-                        disabled={!canEdit}
-                        style={{
-                          flex: 1,
-                          background: '#f59e0b',
-                          color: 'white',
-                          border: 'none',
-                          padding: '0.6rem',
-                          borderRadius: '0.6rem',
-                          fontWeight: 900,
-                          fontSize: '0.68rem',
-                          cursor: canEdit ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem'
-                        }}
-                      >
-                        <Truck size={13} /> REGISTRAR ENVÍO EN TRÁNSITO
-                      </button>
-                    )}
-
-                    {isTransit && (
-                      <button
-                        onClick={() => handleUpdatePoStatus(po.folio, 'RECIBIDA')}
-                        disabled={!canEdit}
-                        style={{
-                          flex: 1,
-                          background: '#16a34a',
-                          color: 'white',
-                          border: 'none',
-                          padding: '0.6rem',
-                          borderRadius: '0.6rem',
-                          fontWeight: 900,
-                          fontSize: '0.68rem',
-                          cursor: canEdit ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem'
-                        }}
-                      >
-                        <CheckCircle size={13} /> MARCAR COMO RECIBIDA EN ALMACÉN
-                      </button>
-                    )}
-
-                    {isReceived && (
-                      <div style={{ flex: 1, textAlign: 'center', padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.6rem', color: '#22c55e', fontWeight: 900, fontSize: '0.68rem' }}>
-                        ✓ MATERIAL RECIBIDO EN PLANTA
-                      </div>
-                    )}
+                        <option value="BORRADOR">📝 BORRADOR</option>
+                        <option value="SOLICITADA">📨 SOLICITADA</option>
+                        <option value="CONFIRMADA">✅ CONFIRMADA POR PROVEEDOR</option>
+                        <option value="EN_TEJIDO">🧵 EN TEJIDO (TELARES)</option>
+                        <option value="SALIDA_DE_TEJIDO">⭐ SALIDA DE TEJIDO (RECALCULA ETA)</option>
+                        <option value="EN_ACABADO_TEÑIDO">🎨 EN ACABADO / TEÑIDO</option>
+                        <option value="EN TRÁNSITO">🚚 EN TRÁNSITO INTERNACIONAL</option>
+                        <option value="ADUANA_FRONTERA">🛃 EN ADUANA FRONTERA</option>
+                        <option value="RECIBIDA">📦 RECIBIDA EN ALMACÉN</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               )
@@ -1374,6 +1587,15 @@ export default function KanbanProduction({ canEdit = true, userEmail = '', showM
             </div>
           </div>
         </div>
+      )}
+
+      {/* Simulador de Cumulative Lead Time & ROP Dinámico */}
+      {simulatorModalItem && (
+        <KanbanLeadTimeSimulatorModal
+          item={simulatorModalItem}
+          globalSafetyDays={globalSafetyDays}
+          onClose={() => setSimulatorModalItem(null)}
+        />
       )}
     </div>
   )

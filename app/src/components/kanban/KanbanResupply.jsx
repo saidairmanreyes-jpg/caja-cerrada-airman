@@ -3,9 +3,11 @@ import { db } from '../../firebase'
 import { collection, doc, setDoc, updateDoc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore'
 import { generateResupplyPDF, generateResupplyZip } from '../../utils/kanbanPDFGenerator'
 import KanbanJustificationModal from './KanbanJustificationModal'
+import KanbanLeadTimeSimulatorModal from './KanbanLeadTimeSimulatorModal'
 import {
   Package, AlertTriangle, ArrowRight, FileText, Download, CheckCircle2,
-  XCircle, Filter, RefreshCw, Truck, ShieldAlert, Check, Search, MapPin, Archive
+  XCircle, Filter, RefreshCw, Truck, ShieldAlert, Check, Search, MapPin, Archive,
+  Clock, Sparkles, Layers
 } from 'lucide-react'
 
 export default function KanbanResupply({ canEdit = true, userEmail = '', showMessage }) {
@@ -17,6 +19,8 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
   const [erpStock, setErpStock] = useState([])
   const [routingRules, setRoutingRules] = useState([])
   const [transferOrders, setTransferOrders] = useState([])
+  const [globalSafetyDays, setGlobalSafetyDays] = useState(30)
+  const [simulatorModalItem, setSimulatorModalItem] = useState(null)
 
   // Selection for bulk transfer creation
   const [selectedGaps, setSelectedGaps] = useState({}) // { [gapKey]: true }
@@ -33,6 +37,13 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
 
   // Real-time Firestore Listeners
   useEffect(() => {
+    const unsubGlobal = onSnapshot(doc(db, 'kanban_global_config', 'parameters'), d => {
+      if (d.exists()) {
+        const data = d.data()
+        if (data.safety_stock_days) setGlobalSafetyDays(Number(data.safety_stock_days))
+      }
+    })
+
     const unsubThresh = onSnapshot(collection(db, 'kanban_thresholds'), snap => {
       const list = []
       snap.forEach(d => list.push({ id: d.id, ...d.data() }))
@@ -59,6 +70,7 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
     })
 
     return () => {
+      unsubGlobal()
       unsubThresh()
       unsubErp()
       unsubRouting()
@@ -97,17 +109,32 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
     }
   })
 
-  // ── Pull Analysis Engine: Detect Gaps and calculate Multi-Origin distribution ──
+  // ── Pull Analysis Engine: Detect Gaps via Genealogía de SKU & Cumulative Lead Time ROP ──
   const pullAnalysis = thresholds.map(th => {
     const destKey = `${th.code}_${th.talla}_${th.warehouse}`
     const currentStock = stockMap[destKey] || 0
     const inTransit = inTransitMap[destKey] || 0
     const virtualStock = currentStock + inTransit
-    const minStock = th.min_stock || 10
-    const maxStock = th.max_stock || 50
 
-    // Only triggers when below or equal to min stock
-    if (virtualStock <= minStock) {
+    // Genealogía de SKU: Determinar tipología y tiempos acumulados
+    const isFantasia = (th.description || th.code || '').toUpperCase().includes('CUADRO') ||
+      (th.description || th.code || '').toUpperCase().includes('RAYA') ||
+      (th.description || th.code || '').toUpperCase().includes('MEZCLILLA') ||
+      (th.description || th.code || '').toUpperCase().includes('DENIM')
+
+    const genealogyType = isFantasia ? 'BASE_FANTASIA_MTO' : 'BASE_CRUDA_TEÑIBLE'
+    const cumulativeLeadTime = isFantasia ? 64 : 29 // 50+4+8+2 vs 15+4+8+2
+    const safetyDays = Number(th.safety_stock_days || globalSafetyDays || 30)
+    const monthlyDemand = Number(th.monthly_consumption || (th.min_stock ? th.min_stock * 4 : 120))
+    const dailyConsumption = Math.max(0.1, monthlyDemand / 30)
+
+    // Dynamic Reorder Point Formula: ROP = (CDP * CLT) + (CDP * Safety_Days)
+    const dynamicROP = Math.round((dailyConsumption * cumulativeLeadTime) + (dailyConsumption * safetyDays))
+    const effectiveMin = th.min_stock ? Math.max(th.min_stock, dynamicROP) : dynamicROP
+    const maxStock = th.max_stock || Math.round(effectiveMin * 2.2)
+
+    // Trigger condition: virtual stock <= dynamic ROP
+    if (virtualStock <= effectiveMin) {
       const deficit = Math.max(0, maxStock - virtualStock)
 
       // Check Multidirectional Routing
@@ -176,8 +203,14 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
         current_stock: currentStock,
         in_transit: inTransit,
         virtual_stock: virtualStock,
-        min_stock: minStock,
+        min_stock: effectiveMin,
         max_stock: maxStock,
+        dynamic_rop: dynamicROP,
+        cumulative_lead_time: cumulativeLeadTime,
+        safety_stock_days: safetyDays,
+        genealogy_type: genealogyType,
+        monthly_consumption: monthlyDemand,
+        daily_consumption: dailyConsumption,
         needed: deficit,
         can_resupply: canResupply,
         assigned_origin: assignedOriginLabel,
@@ -529,24 +562,23 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
                   <th style={{ padding: '1rem' }}>CÓDIGO & DESCRIPCIÓN</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>TALLA</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>DESTINO</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>STOCK VIRTUAL (ACT+TRÁNS)</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>MÍN / MÁX</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>STOCK VIRTUAL</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>PUNTO REORDEN (ROP)</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>FALTANTE PULL</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>ORIGEN ASIGNADO</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>EXISTENCIA ORIGEN</th>
+                  <th style={{ padding: '1rem', textAlign: 'right' }}>AUDITORÍA CLT</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCandidates.map(c => {
                   const isSelected = !!selectedGaps[c.key]
+                  const isFan = c.genealogy_type === 'BASE_FANTASIA_MTO'
                   return (
                     <tr
                       key={c.key}
-                      onClick={() => handleToggleSelect(c.key)}
                       style={{
                         borderBottom: '1px solid rgba(255,255,255,0.02)',
                         color: 'white',
-                        cursor: 'pointer',
                         background: isSelected ? 'rgba(14, 165, 233, 0.08)' : 'transparent'
                       }}
                     >
@@ -554,12 +586,17 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => {}}
+                          onChange={() => handleToggleSelect(c.key)}
                           style={{ cursor: 'pointer', accentColor: '#0ea5e9' }}
                         />
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 800, color: '#f1f5f9' }}>{c.code}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontWeight: 800, color: '#f1f5f9' }}>{c.code}</span>
+                          <span style={{ fontSize: '0.55rem', fontWeight: 900, padding: '0.1rem 0.35rem', borderRadius: '0.3rem', background: isFan ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: isFan ? '#f59e0b' : '#22c55e' }}>
+                            {isFan ? 'FANTASÍA (MTO 64d)' : 'LISO (GREIGE 29d)'}
+                          </span>
+                        </div>
                         <div style={{ fontSize: '0.62rem', color: '#64748b' }}>{c.description}</div>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 900 }}>{c.talla}</td>
@@ -567,11 +604,12 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
                         <span style={{ color: '#38bdf8', fontWeight: 800 }}>{c.warehouse_dest}</span>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <span style={{ fontWeight: 900, color: '#f59e0b' }}>{c.virtual_stock}</span>
+                        <span style={{ fontWeight: 900, color: '#f59e0b' }}>{c.virtual_stock} pzas</span>
                         <span style={{ fontSize: '0.6rem', color: '#64748b', display: 'block' }}>({c.current_stock} + {c.in_transit} trans)</span>
                       </td>
-                      <td style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>
-                        {c.min_stock} / {c.max_stock}
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <span style={{ fontWeight: 900, color: '#22c55e', fontSize: '0.85rem' }}>{c.dynamic_rop || c.min_stock} pzas</span>
+                        <span style={{ fontSize: '0.55rem', color: '#64748b', display: 'block' }}>CLT: {c.cumulative_lead_time}d + {c.safety_stock_days}d Cob.</span>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 900, color: '#ef4444', fontSize: '0.85rem' }}>
                         {c.needed}
@@ -580,9 +618,32 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '0.2rem 0.5rem', borderRadius: '0.4rem' }}>
                           {c.assigned_origin}
                         </span>
+                        <span style={{ fontSize: '0.55rem', color: '#22c55e', display: 'block', marginTop: '0.15rem' }}>
+                          Disp: {c.origin_stock} pzas
+                        </span>
                       </td>
-                      <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 900, color: '#22c55e' }}>
-                        {c.origin_stock} pzas
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSimulatorModalItem(c)
+                          }}
+                          style={{
+                            background: 'rgba(168, 85, 247, 0.15)',
+                            border: '1px solid rgba(168, 85, 247, 0.35)',
+                            color: '#c084fc',
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '0.5rem',
+                            fontWeight: 900,
+                            fontSize: '0.62rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem'
+                          }}
+                        >
+                          <Clock size={11} /> SIMULADOR CLT
+                        </button>
                       </td>
                     </tr>
                   )
@@ -592,7 +653,7 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
                     <td colSpan="9" style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
                       <CheckCircle2 size={32} style={{ color: '#22c55e', margin: '0 auto 0.5rem', opacity: 0.8 }} />
                       <p style={{ fontWeight: 800, textTransform: 'uppercase' }}>TODAS LAS SUCURSALES TIENEN STOCK ÓPTIMO</p>
-                      <p style={{ fontSize: '0.65rem', marginTop: '0.25rem' }}>No hay SKUs por debajo del stock mínimo con mercancía disponible en origen.</p>
+                      <p style={{ fontSize: '0.65rem', marginTop: '0.25rem' }}>No hay SKUs por debajo del stock de seguridad con mercancía disponible en origen.</p>
                     </td>
                   </tr>
                 )}
@@ -801,6 +862,15 @@ export default function KanbanResupply({ canEdit = true, userEmail = '', showMes
         minLength={10}
         loading={loading}
       />
+
+      {/* Simulador de Cumulative Lead Time & ROP Dinámico */}
+      {simulatorModalItem && (
+        <KanbanLeadTimeSimulatorModal
+          item={simulatorModalItem}
+          globalSafetyDays={globalSafetyDays}
+          onClose={() => setSimulatorModalItem(null)}
+        />
+      )}
     </div>
   )
 }

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { db } from '../../firebase'
 import { collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
+import KanbanLeadTimeSimulatorModal from './KanbanLeadTimeSimulatorModal'
 import {
   Layers, Settings, Truck, Users, RefreshCw, Upload, Download, Plus,
   Trash2, Edit3, Check, X, Search, AlertCircle, FileSpreadsheet, ArrowRight,
   ShieldAlert, Sparkles, Sliders, Grid, Copy, HelpCircle, Tag, CheckCircle2,
-  Clock, Database, Warehouse, DollarSign, Filter, CheckCircle
+  Clock, Database, Warehouse, DollarSign, Filter, CheckCircle, BarChart3
 } from 'lucide-react'
 
 const WAREHOUSES = ['MATRIZ', 'PLANTA', 'MEXICO', 'MONTERREY']
@@ -23,36 +24,35 @@ export const normalizeWarehouse = (wh) => {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ── CATÁLOGO MAESTRO DE MATERIAS PRIMAS (TELAS Y AVÍOS - CÓDIGOS INTERNOS) ──
+// ── CATÁLOGO MAESTRO DE MATERIAS PRIMAS (GENEALOGÍA DE SKU & MAPEO DE ORIGEN) ──
 // ═════════════════════════════════════════════════════════════════════════════
 export const RAW_MATERIALS_CATALOG = [
-  // ── TELAS (MTS / KGS) ──
-  { code: 'TEL-GAB-01', name: 'GABARDINA 8.5 OZ ALGODÓN 100%', type: 'TELA', unit: 'MTS', notes: 'Pantalón trabajo y casual' },
-  { code: 'TEL-GAB-02', name: 'GABARDINA 7.5 OZ ALGODÓN/POLIÉSTER', type: 'TELA', unit: 'MTS', notes: 'Pantalón ligero' },
-  { code: 'TEL-GAB-STR', name: 'GABARDINA STRETCH 98/2 ELASTANO', type: 'TELA', unit: 'MTS', notes: 'Pantalón confort stretch' },
-  { code: 'TEL-GAB-DAM', name: 'GABARDINA STRETCH DAMA CONFORT', type: 'TELA', unit: 'MTS', notes: 'Pantalón corte dama' },
-  { code: 'TEL-POP-01', name: 'POPELINA 100% ALGODÓN PEINADO', type: 'TELA', unit: 'MTS', notes: 'Camisa vestir clásica' },
-  { code: 'TEL-POP-02', name: 'POPELINA STRETCH 97/3 SPANDEX', type: 'TELA', unit: 'MTS', notes: 'Camisa slim fit popelina' },
-  { code: 'TEL-POP-65', name: 'POPELINA 65/35 POLIÉSTER/ALGODÓN', type: 'TELA', unit: 'MTS', notes: 'Camisa uniforme rudo' },
-  { code: 'TEL-PIQ-01', name: 'PIQUÉ ALGODÓN 100% 220G PEINADO', type: 'TELA', unit: 'MTS', notes: 'Playera polo premium' },
-  { code: 'TEL-PIQ-02', name: 'PIQUÉ 50/50 DRY-FIT POLI/ALGODÓN', type: 'TELA', unit: 'MTS', notes: 'Polo deportiva/operativa' },
-  { code: 'TEL-JER-01', name: 'JERSEY 100% ALGODÓN PEINADO 180G', type: 'TELA', unit: 'MTS', notes: 'Playera cuello redondo' },
-  { code: 'TEL-JER-STR', name: 'JERSEY ALGODÓN LYCRA 95/5', type: 'TELA', unit: 'MTS', notes: 'Playera fit dama' },
-  { code: 'TEL-FEL-01', name: 'FELPA FLEECE 3 HILOS PERCHADA 300G', type: 'TELA', unit: 'MTS', notes: 'Sudadera invernal con capucha' },
-  { code: 'TEL-FEL-LIG', name: 'FELPA LIGERA FRENCH TERRY 240G', type: 'TELA', unit: 'MTS', notes: 'Sudadera cuello redondo' },
-  { code: 'TEL-OXF-01', name: 'OXFORD PINPOINT ALGODÓN 100%', type: 'TELA', unit: 'MTS', notes: 'Camisa ejecutiva oxford' },
-  { code: 'TEL-OXF-STR', name: 'OXFORD STRETCH CORPORATIVO', type: 'TELA', unit: 'MTS', notes: 'Camisa corporativa flexible' },
-  { code: 'TEL-MEZ-12', name: 'MEZCLILLA DENIM 12 OZ ALGODÓN', type: 'TELA', unit: 'MTS', notes: 'Jeans caballero/dama' },
-  { code: 'TEL-MEZ-14', name: 'MEZCLILLA DENIM 14 OZ TRABAJO RUDO', type: 'TELA', unit: 'MTS', notes: 'Pantalón mezclilla industrial' },
-  { code: 'TEL-RIP-01', name: 'RIPSTOP ANTIRASGADO 65/35', type: 'TELA', unit: 'MTS', notes: 'Pantalón táctico / cargo' },
-  { code: 'TEL-TAS-01', name: 'TASLAN IMPERMEABLE REPELENTE', type: 'TELA', unit: 'MTS', notes: 'Chamarra rompevientos' },
-  { code: 'TEL-SOF-01', name: 'SOFTSHELL TÉRMICO TRICAPA', type: 'TELA', unit: 'MTS', notes: 'Chaleco / chamarra softshell' },
-  { code: 'TEL-FOR-01', name: 'FORRO DE BOLSILLOS POPELINA ALGODÓN', type: 'TELA', unit: 'MTS', notes: 'Fondos de bolsa pantalón' },
-  { code: 'TEL-FOR-02', name: 'FORRO TAFETA POLIÉSTER 100%', type: 'TELA', unit: 'MTS', notes: 'Forro interior saco/chaleco' },
-  { code: 'TEL-FOR-CAP', name: 'FORRO CAPITONADO TÉRMICO 100G', type: 'TELA', unit: 'MTS', notes: 'Acolchado chaleco/chamarra' },
-  { code: 'TEL-MIC-01', name: 'MICROFIBRA DRY-TECH ULTRA LIVIANA', type: 'TELA', unit: 'MTS', notes: 'Short / Bermuda deportiva' },
-  { code: 'TEL-CHI-01', name: 'CHIFÓN POLIÉSTER DAMA', type: 'TELA', unit: 'MTS', notes: 'Blusa ejecutiva dama' },
-  { code: 'TEL-RIB-01', name: 'RIB 1X1 ALGODÓN ELASTANO CUELLOS', type: 'TELA', unit: 'MTS', notes: 'Rib puños y pretinas' },
+  // ── TELAS TIPO A: LISOS (Base Cruda Teñible / Greige en Molino Guatemala) ──
+  { code: 'TEL-GAB-ISA', name: 'GABARDINA ISABEL', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-HAW-ELA', name: 'HAWA ELASTANO', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-GAB-AMI', name: 'GABARDINA AMIN ELASTANO', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-TWI-MEC', name: 'TWILL MECHANICAL', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-WAR-PIQ', name: 'WARP PIQUE', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'HACIENDA (AGS)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 5, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-CLE-01',  name: 'CLEVELAND', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Permite stock en crudo/greige en molino Guatemala' },
+  { code: 'TEL-GAB-01',  name: 'GABARDINA 8.5 OZ ALGODÓN 100%', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Pantalón trabajo' },
+  { code: 'TEL-GAB-02',  name: 'GABARDINA 7.5 OZ ALGODÓN/POLIÉSTER', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Pantalón ligero' },
+  { code: 'TEL-POP-01',  name: 'POPELINA 100% ALGODÓN PEINADO', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Camisa vestir clásica' },
+  { code: 'TEL-PIQ-01',  name: 'PIQUÉ ALGODÓN 100% 220G PEINADO', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'HACIENDA (AGS)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 5, unit: 'MTS', notes: 'Tipo A: Liso - Polo premium' },
+  { code: 'TEL-JER-01',  name: 'JERSEY 100% ALGODÓN PEINADO 180G', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'HACIENDA (AGS)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 5, unit: 'MTS', notes: 'Tipo A: Liso - Playera cuello redondo' },
+  { code: 'TEL-OXF-01',  name: 'OXFORD PINPOINT ALGODÓN 100%', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', lead_time_teñido_dias: 15, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo A: Liso - Camisa ejecutiva oxford' },
+
+  // ── TELAS TIPO B: FANTASÍA (Producción Cero / Make-to-Order - Hilo Pre-teñido) ──
+  { code: 'TEL-FAN-CUA', name: 'CUADRO', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Hilos teñidos previo / Producción cero MTO en Guatemala' },
+  { code: 'TEL-FAN-MIC', name: 'MICRO CUADRO', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Hilos teñidos previo / Producción cero MTO en Guatemala' },
+  { code: 'TEL-FAN-RAY', name: 'RAYA', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Hilos teñidos previo / Producción cero MTO en Guatemala' },
+  { code: 'TEL-FAN-MRA', name: 'MICRO RAYA', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Hilos teñidos previo / Producción cero MTO en Guatemala' },
+  { code: 'TEL-MEZ-DEN', name: 'MEZCLILLA', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Denim teñido índigo en urdido / Producción cero MTO en Guatemala' },
+  { code: 'TEL-MEZ-14',  name: 'MEZCLILLA DENIM 14 OZ TRABAJO RUDO', type: 'TELA', comportamiento_tela: 'FANTASIA', origen_fabricacion: 'BASE_FANTASIA_MTO', almacen_recepcion: 'PLANTA (TEH)', lead_time_produccion_dias: 50, lead_time_transito_teh_dias: 4, unit: 'MTS', notes: 'Tipo B: Fantasía - Denim industrial' },
+
+  // ── OTRAS TELAS Y FORROS ──
+  { code: 'TEL-FOR-01', name: 'FORRO DE BOLSILLOS POPELINA ALGODÓN', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', unit: 'MTS', notes: 'Fondos de bolsa pantalón' },
+  { code: 'TEL-FOR-02', name: 'FORRO TAFETA POLIÉSTER 100%', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'PLANTA (TEH)', unit: 'MTS', notes: 'Forro interior saco/chaleco' },
+  { code: 'TEL-RIB-01', name: 'RIB 1X1 ALGODÓN ELASTANO CUELLOS', type: 'TELA', comportamiento_tela: 'LISO', origen_fabricacion: 'BASE_CRUDA_TEÑIBLE', almacen_recepcion: 'HACIENDA (AGS)', unit: 'MTS', notes: 'Rib puños y pretinas' },
 
   // ── AVÍOS (PZAS / CONOS / JUEGOS) ──
   { code: 'AVI-BOT-14', name: 'BOTÓN PASTA 14L CAMISERO 4 ORIFICIOS', type: 'AVÍO', unit: 'PZAS', notes: 'Puño y cuello camisa' },
@@ -188,8 +188,20 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
   const [lastSyncInfo, setLastSyncInfo] = useState(null)
   const [dragActive, setDragActive] = useState(false)
 
+  // ── State for Global Safety Stock Days & Lead Time Simulator ──
+  const [globalSafetyDays, setGlobalSafetyDays] = useState(30)
+  const [simulatorModalItem, setSimulatorModalItem] = useState(null)
+
   // Real-time Firestore Listeners
   useEffect(() => {
+    // 0. Global Parameters (Safety Days)
+    const unsubGlobal = onSnapshot(doc(db, 'kanban_global_config', 'parameters'), (d) => {
+      if (d.exists()) {
+        const data = d.data()
+        if (data.safety_stock_days) setGlobalSafetyDays(Number(data.safety_stock_days))
+      }
+    })
+
     // 1. BOMs
     const unsubBoms = onSnapshot(collection(db, 'kanban_boms'), (snap) => {
       const list = []
@@ -253,6 +265,7 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
     })
 
     return () => {
+      unsubGlobal()
       unsubBoms()
       unsubThresh()
       unsubSuppliers()
@@ -389,6 +402,27 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
   const seedSampleSuppliers = async () => {
     const samples = [
       {
+        id: 'SUP-GTM-01',
+        type: 'TELA',
+        name: 'TEXTILES DEL PACÍFICO S.A. (MOLINO GUATEMALA)',
+        contact: 'Ing. Rodrigo Castillo',
+        phone: '+502 2388-9900',
+        email: 'pedidos@textilespacifico.gt',
+        address: 'Km 24 Carretera al Pacífico, Villa Nueva, Guatemala',
+        specialty: 'Gabardina Isabel, Hawa Elastano, Warp Pique, Cleveland, Cuadros, Rayas y Mezclilla',
+        origin_country: 'GUATEMALA',
+        weekly_capacity: 20000,
+        daily_capacity: 4000,
+        mill_loom_monthly_capacity: 80000,
+        lead_time_days: 18, // Default general
+        lead_time_liso_days: 18, // Teñido desde stock crudo greige + Tránsito
+        lead_time_fantasia_days: 55, // Producción completa MTO (Hilo + Tejido + Acabado + Tránsito)
+        lead_time_post_weaving_days: 14, // Días tras "Salida de Tejido" (Acabado + Aduana + Tránsito a México)
+        logistics_days: 4,
+        status: 'ACTIVO',
+        notes: 'Molino textil principal de hilatura y tejeduría en Guatemala. Maneja stock en crudo para Lisos y telares MTO para Fantasías.'
+      },
+      {
         id: 'SUP-001',
         type: 'MAQUILERO',
         name: 'CONFECCIONES Y MAQUILAS DEL NORTE',
@@ -397,6 +431,7 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         email: 'cmendoza@maquilasnorte.com',
         address: 'Av. Industrial 402, Monterrey, N.L.',
         specialty: 'Playeras Polo y Cuello Redondo',
+        origin_country: 'MÉXICO',
         weekly_capacity: 5000,
         daily_capacity: 1000,
         lead_time_days: 7,
@@ -413,6 +448,7 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         email: 'mjuarez@textilespuebla.mx',
         address: 'Parque Industrial 2000, Puebla, Pue.',
         specialty: 'Camisería Fina y Popelina',
+        origin_country: 'MÉXICO',
         weekly_capacity: 3500,
         daily_capacity: 700,
         lead_time_days: 10,
@@ -429,6 +465,7 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         email: 'rgarza@gabardinasbajio.com',
         address: 'Blvd. Aeropuerto 1500, León, Gto.',
         specialty: 'Pantalones y Gabardinas Pesadas',
+        origin_country: 'MÉXICO',
         weekly_capacity: 4000,
         daily_capacity: 800,
         lead_time_days: 12,
@@ -445,12 +482,16 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         email: 'ventas@telasindustriales.mx',
         address: 'Calz. Vallejo 1100, CDMX',
         specialty: 'Gabardina 8.5 oz, Mezclilla 14 oz, Piqué 100% Algodón, Popelina Stretch',
+        origin_country: 'MÉXICO',
         weekly_capacity: 25000,
         daily_capacity: 5000,
         lead_time_days: 5,
+        lead_time_liso_days: 5,
+        lead_time_fantasia_days: 25,
+        lead_time_post_weaving_days: 3,
         logistics_days: 1,
         status: 'ACTIVO',
-        notes: 'Proveedor principal de rollos de gabardina y tejido de punto peinado'
+        notes: 'Proveedor principal de rollos de gabardina y tejido de punto peinado nacional'
       },
       {
         id: 'SUP-005',
@@ -461,6 +502,7 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         email: 'saleman@aviosnacionales.com',
         address: 'Zona Industrial 3, Guadalajara, Jal.',
         specialty: 'Cierres Latón #5, Botones Metal Troquelados, Elásticos 40mm, Hilos 40/2',
+        origin_country: 'MÉXICO',
         weekly_capacity: 50000,
         daily_capacity: 10000,
         lead_time_days: 3,
@@ -722,8 +764,25 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
-  // ── Min/Max Threshold Handlers ──
+  // ── Min/Max & Dynamic ROP Threshold Handlers ──
   // ═════════════════════════════════════════════════════════════════════════════
+  const handleSaveGlobalSafetyDays = async (val) => {
+    if (!canEdit) return showMessage('error', 'No tienes permisos de edición.')
+    const num = Math.max(1, parseInt(val) || 30)
+    try {
+      await setDoc(doc(db, 'kanban_global_config', 'parameters'), {
+        safety_stock_days: num,
+        updated_at: new Date().toISOString(),
+        updated_by: 'Planeación Antigravity'
+      }, { merge: true })
+      setGlobalSafetyDays(num)
+      showMessage('success', `POLÍTICA GLOBAL ACTUALIZADA: ${num} DÍAS DE COBERTURA DE SEGURIDAD (${(num / 30).toFixed(1)} MESES)`)
+    } catch (e) {
+      console.error(e)
+      showMessage('error', 'Error al guardar política de cobertura: ' + e.message)
+    }
+  }
+
   const handleSaveThresholdInline = async (thresh) => {
     if (!canEdit) return showMessage('error', 'No tienes permisos de edición.')
     try {
@@ -732,6 +791,8 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         min_stock: parseInt(thresh.min_stock) || 0,
         max_stock: parseInt(thresh.max_stock) || 0,
         safety_stock: parseInt(thresh.safety_stock) || 0,
+        safety_stock_days: parseInt(thresh.safety_stock_days) || globalSafetyDays,
+        monthly_consumption: parseInt(thresh.monthly_consumption) || 120,
         updated_at: new Date().toISOString()
       }, { merge: true })
       showMessage('success', `UMBRALES DE ${thresh.code} (${thresh.talla} - ${thresh.warehouse}) ACTUALIZADOS`)
@@ -818,8 +879,13 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
         id,
         weekly_capacity: parseInt(supData.weekly_capacity) || 0,
         daily_capacity: parseInt(supData.daily_capacity) || 0,
+        mill_loom_monthly_capacity: parseInt(supData.mill_loom_monthly_capacity) || 0,
         lead_time_days: parseInt(supData.lead_time_days) || 7,
+        lead_time_liso_days: parseInt(supData.lead_time_liso_days) || parseInt(supData.lead_time_days) || 18,
+        lead_time_fantasia_days: parseInt(supData.lead_time_fantasia_days) || 55,
+        lead_time_post_weaving_days: parseInt(supData.lead_time_post_weaving_days) || 14,
         logistics_days: parseInt(supData.logistics_days) || 1,
+        origin_country: supData.origin_country || 'MÉXICO',
         status: supData.status || 'ACTIVO',
         updated_at: new Date().toISOString()
       })
@@ -1485,10 +1551,54 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 2: Umbrales Min / Max (Edición Manual Rápida) ── */}
+      {/* ── TAB 2: Umbrales Min / Max & ROP Dinámico (Días de Cobertura) ── */}
       {/* ══════════════════════════════════════════════════════════════════════════ */}
       {subTab === 'thresholds' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* ── Global Safety Stock / Days of Coverage Policy Banner ── */}
+          <div className="glass" style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', border: '1px solid rgba(56, 189, 248, 0.25)', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9))' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>
+                  🛡️ POLÍTICA DINÁMICA DE COBERTURA & CUMULATIVE LEAD TIME (CLT)
+                </span>
+                <h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'white', marginTop: '0.2rem' }}>
+                  STOCK DE SEGURIDAD GLOBAL: {globalSafetyDays} DÍAS ({(globalSafetyDays / 30).toFixed(1)} MESES DE CONSUMO PROMEDIO)
+                </h4>
+                <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: 0 }}>
+                  El motor KANBAN sincroniza Guatemala y México calculando: <b>Punto de Reorden (ROP) = (Consumo Diario × CLT) + Stock de Seguridad</b>.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#64748b' }}>AJUSTE RÁPIDO:</span>
+                {[
+                  { days: 30, label: '30 DÍAS (1 MES)' },
+                  { days: 45, label: '45 DÍAS (1.5 MESES)' },
+                  { days: 60, label: '60 DÍAS (2 MESES)' }
+                ].map(preset => (
+                  <button
+                    key={preset.days}
+                    onClick={() => handleSaveGlobalSafetyDays(preset.days)}
+                    disabled={!canEdit}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '0.6rem',
+                      fontSize: '0.68rem',
+                      fontWeight: 900,
+                      cursor: canEdit ? 'pointer' : 'not-allowed',
+                      background: globalSafetyDays === preset.days ? '#0284c7' : 'rgba(255,255,255,0.05)',
+                      color: globalSafetyDays === preset.days ? 'white' : '#94a3b8',
+                      border: globalSafetyDays === preset.days ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Action Bar */}
           <div className="glass" style={{ padding: '1.25rem 1.5rem', borderRadius: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
@@ -1571,23 +1681,30 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
             </div>
           </div>
 
-          {/* Table with Quick Inline Edit */}
+          {/* Table with Quick Inline Edit & Dynamic ROP */}
           <div className="glass" style={{ borderRadius: '1.25rem', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.02)', color: '#64748b', textAlign: 'left' }}>
                   <th style={{ padding: '1rem' }}>CÓDIGO & DESCRIPCIÓN</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>TALLA</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>ALMACÉN</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>STOCK MÍNIMO (PULL)</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>STOCK MÁXIMO (TECHO)</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>SEGURIDAD</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>ACCIONES RÁPIDAS</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>DESTINO</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>COBERTURA (DÍAS)</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>PUNTO REORDEN (ROP)</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>MÁXIMO (TECHO)</th>
+                  <th style={{ padding: '1rem', textAlign: 'right' }}>AUDITORÍA / SIMULADOR</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredThresholds.map(t => {
                   const isEditing = editingThresh?.id === t.id
+                  const sDays = Number(t.safety_stock_days || globalSafetyDays || 30)
+                  const mDemand = Number(t.monthly_consumption || (t.min_stock ? t.min_stock * 4 : 120))
+                  const cdp = mDemand / 30
+                  const isFan = (t.description || t.code || '').toUpperCase().includes('CUADRO') || (t.description || t.code || '').toUpperCase().includes('RAYA') || (t.description || t.code || '').toUpperCase().includes('MEZCLILLA')
+                  const cltDays = isFan ? 64 : 29
+                  const calculatedRop = Math.round((cdp * cltDays) + (cdp * sDays))
+
                   return (
                     <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', color: 'white' }}>
                       <td style={{ padding: '1rem' }}>
@@ -1603,18 +1720,30 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
                         <span style={{ fontWeight: 800, color: '#38bdf8' }}>{t.warehouse}</span>
                       </td>
 
-                      {/* Stock Minimo */}
+                      {/* Días de Cobertura Seguridad */}
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         {isEditing ? (
                           <input
                             type="number"
-                            value={editingThresh.min_stock}
-                            onChange={(e) => setEditingThresh({ ...editingThresh, min_stock: e.target.value })}
-                            style={{ width: '70px', background: '#020617', border: '1px solid #0284c7', borderRadius: '0.5rem', padding: '0.3rem', color: '#38bdf8', fontWeight: 900, textAlign: 'center' }}
+                            value={editingThresh.safety_stock_days || globalSafetyDays}
+                            onChange={(e) => setEditingThresh({ ...editingThresh, safety_stock_days: e.target.value })}
+                            style={{ width: '65px', background: '#020617', border: '1px solid #0284c7', borderRadius: '0.5rem', padding: '0.3rem', color: '#f59e0b', fontWeight: 900, textAlign: 'center' }}
                           />
                         ) : (
-                          <span style={{ fontWeight: 900, color: '#f59e0b', fontSize: '0.85rem' }}>{t.min_stock}</span>
+                          <span style={{ fontWeight: 900, color: '#f59e0b', fontSize: '0.85rem' }}>{sDays} días</span>
                         )}
+                      </td>
+
+                      {/* Punto de Reorden Dinámico (ROP) */}
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 900, color: '#22c55e', fontSize: '0.9rem' }}>
+                            {t.min_stock ? Math.max(t.min_stock, calculatedRop) : calculatedRop} pzas
+                          </span>
+                          <span style={{ fontSize: '0.55rem', color: '#64748b' }}>
+                            CLT: {cltDays}d + {sDays}d Cob.
+                          </span>
+                        </div>
                       </td>
 
                       {/* Stock Maximo */}
@@ -1628,20 +1757,6 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
                           />
                         ) : (
                           <span style={{ fontWeight: 900, color: '#22c55e', fontSize: '0.85rem' }}>{t.max_stock}</span>
-                        )}
-                      </td>
-
-                      {/* Safety Stock */}
-                      <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            value={editingThresh.safety_stock}
-                            onChange={(e) => setEditingThresh({ ...editingThresh, safety_stock: e.target.value })}
-                            style={{ width: '60px', background: '#020617', border: '1px solid #0284c7', borderRadius: '0.5rem', padding: '0.3rem', color: '#cbd5e1', textAlign: 'center' }}
-                          />
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>{t.safety_stock || 0}</span>
                         )}
                       </td>
 
@@ -1852,24 +1967,55 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
                   </div>
 
                   {/* Capacities & Lead Times */}
-                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.75rem', padding: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.7rem' }}>
-                    <div>
-                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO PRODUCCIÓN / DESPACHO</span>
-                      <span style={{ color: '#f59e0b', fontWeight: 900 }}>{s.lead_time_days || 5} días hábiles</span>
+                  {isFabric ? (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.75rem', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.7rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
+                        <span style={{ color: '#38bdf8', fontWeight: 900, fontSize: '0.65rem' }}>
+                          {s.origin_country === 'GUATEMALA' ? '🇬🇹 MOLINO GUATEMALA' : '🇲🇽 PROVEEDOR NACIONAL'}
+                        </span>
+                        <span style={{ color: '#cbd5e1', fontSize: '0.62rem' }}>
+                          Telares: <strong>{s.mill_loom_monthly_capacity ? `${s.mill_loom_monthly_capacity.toLocaleString()} mts/mes` : 'N/A'}</strong>
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                        <div>
+                          <span style={{ color: '#22c55e', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>LISOS (CRUDO)</span>
+                          <span style={{ color: '#22c55e', fontWeight: 900 }}>{s.lead_time_liso_days || 18} días</span>
+                        </div>
+                        <div>
+                          <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>FANTASÍAS (MTO)</span>
+                          <span style={{ color: '#f59e0b', fontWeight: 900 }}>{s.lead_time_fantasia_days || 55} días</span>
+                        </div>
+                        <div>
+                          <span style={{ color: '#c084fc', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>SALIDA TEJIDO</span>
+                          <span style={{ color: '#c084fc', fontWeight: 900 }}>{s.lead_time_post_weaving_days || 14} días</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.62rem', color: '#94a3b8', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '0.35rem' }}>
+                        <span>Tránsito Flete: <strong style={{ color: '#38bdf8' }}>{s.logistics_days || 1}d</strong></span>
+                        <span>Capacidad Semanal: <strong style={{ color: '#f1f5f9' }}>{s.weekly_capacity?.toLocaleString() || 'N/A'} mts</strong></span>
+                      </div>
                     </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO TRASLADO LOGÍSTICO</span>
-                      <span style={{ color: '#38bdf8', fontWeight: 900 }}>{s.logistics_days || 1} días</span>
+                  ) : (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '0.75rem', padding: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.7rem' }}>
+                      <div>
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO PRODUCCIÓN / CONFECCIÓN</span>
+                        <span style={{ color: '#f59e0b', fontWeight: 900 }}>{s.lead_time_days || 7} días hábiles</span>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>TIEMPO TRASLADO LOGÍSTICO</span>
+                        <span style={{ color: '#38bdf8', fontWeight: 900 }}>{s.logistics_days || 1} días</span>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>LEAD TIME TOTAL</span>
+                        <span style={{ color: '#22c55e', fontWeight: 900 }}>{(s.lead_time_days || 7) + (s.logistics_days || 1)} días</span>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>CAPACIDAD SEMANAL</span>
+                        <span style={{ color: '#f1f5f9', fontWeight: 900 }}>{s.weekly_capacity?.toLocaleString() || 'N/A'} pzas</span>
+                      </div>
                     </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>LEAD TIME TOTAL ABASTECIMIENTO</span>
-                      <span style={{ color: '#22c55e', fontWeight: 900 }}>{(s.lead_time_days || 5) + (s.logistics_days || 1)} días</span>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontWeight: 800, fontSize: '0.58rem', display: 'block' }}>CAPACIDAD SEMANAL</span>
-                      <span style={{ color: '#f1f5f9', fontWeight: 900 }}>{s.weekly_capacity?.toLocaleString() || 'N/A'} {isFabric ? 'mts' : 'pzas'}</span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Contact Info */}
                   <div style={{ fontSize: '0.68rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.2rem', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '0.5rem' }}>
@@ -2372,6 +2518,17 @@ export default function KanbanMasterConfig({ canEdit = true, showMessage }) {
           loading={loading}
         />
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════ */}
+      {/* ── MODAL: Simulador de Cumulative Lead Time (CLT) & ROP Dinámico ── */}
+      {/* ══════════════════════════════════════════════════════════════════════════ */}
+      {simulatorModalItem && (
+        <KanbanLeadTimeSimulatorModal
+          item={simulatorModalItem}
+          globalSafetyDays={globalSafetyDays}
+          onClose={() => setSimulatorModalItem(null)}
+        />
+      )}
     </div>
   )
 }
@@ -2529,6 +2686,7 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
       name: item.name,
       code: item.code,
       unit: item.unit,
+      comportamiento_tela: item.comportamiento_tela || (item.type === 'TELA' ? 'LISO' : 'N/A'),
       notes: item.notes || ''
     })
   }
@@ -2551,6 +2709,7 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
       type: newMatForm.type,
       name: matName,
       code: matCode,
+      comportamiento_tela: newMatForm.comportamiento_tela || (newMatForm.type === 'TELA' ? 'LISO' : 'N/A'),
       unit: newMatForm.unit.toUpperCase().trim() || (newMatForm.type === 'TELA' ? 'MTS' : 'PZAS'),
       notes: newMatForm.notes || ''
     }
@@ -2568,7 +2727,7 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
       }
     })
 
-    setNewMatForm({ type: 'AVÍO', name: '', code: '', unit: 'PZAS', notes: '' })
+    setNewMatForm({ type: 'AVÍO', name: '', code: '', unit: 'PZAS', comportamiento_tela: 'N/A', notes: '' })
     setCatalogSearch('')
     setNewMaterialModal(false)
   }
@@ -3316,9 +3475,14 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
     email: modalState.data.email || '',
     address: modalState.data.address || '',
     specialty: modalState.data.specialty || '',
+    origin_country: modalState.data.origin_country || (modalState.data.type === 'TELA' && (modalState.data.name || '').includes('GUATEMALA') ? 'GUATEMALA' : 'MÉXICO'),
     weekly_capacity: modalState.data.weekly_capacity || 3000,
     daily_capacity: modalState.data.daily_capacity || 600,
+    mill_loom_monthly_capacity: modalState.data.mill_loom_monthly_capacity || 80000,
     lead_time_days: modalState.data.lead_time_days || 7,
+    lead_time_liso_days: modalState.data.lead_time_liso_days || 18,
+    lead_time_fantasia_days: modalState.data.lead_time_fantasia_days || 55,
+    lead_time_post_weaving_days: modalState.data.lead_time_post_weaving_days || 14,
     logistics_days: modalState.data.logistics_days || 1,
     status: modalState.data.status || 'ACTIVO',
     notes: modalState.data.notes || ''
@@ -3334,12 +3498,12 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
     }}>
       <div style={{
         background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1.5rem',
-        maxWidth: '650px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
+        maxWidth: '700px', width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
           <div>
-            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>CONFIGURACIÓN DE CATÁLOGO MAESTRO</span>
+            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '0.05em' }}>CONFIGURACIÓN DE CATÁLOGO MAESTRO & TIEMPOS MRP</span>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white', textTransform: 'uppercase', marginTop: '0.2rem' }}>
               {modalState.isNew ? 'ALTA DE NUEVO PROVEEDOR' : `EDITAR PROVEEDOR: ${form.name}`}
             </h3>
@@ -3356,7 +3520,7 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.65rem' }}>
               {[
                 { id: 'MAQUILERO', label: '👔 MAQUILERO (CONFECCIÓN)', color: '#818cf8', bg: 'rgba(129, 140, 248, 0.15)', border: '#818cf8' },
-                { id: 'TELA', label: '🧵 PROVEEDOR DE TELAS', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: '#38bdf8' },
+                { id: 'TELA', label: '🧵 MOLINO / PROV. TELAS', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: '#38bdf8' },
                 { id: 'AVÍO', label: '🔘 PROVEEDOR DE AVÍOS', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.15)', border: '#fbbf24' }
               ].map(t => (
                 <button
@@ -3383,25 +3547,26 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOMBRE O RAZÓN SOCIAL DEL PROVEEDOR *</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOMBRE O RAZÓN SOCIAL *</label>
               <input
                 type="text"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value.toUpperCase() })}
-                placeholder="EJ. TELAS INDUSTRIALES DE MÉXICO"
+                placeholder="EJ. TEXTILES DEL PACÍFICO (MOLINO GUATEMALA)"
                 style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>ESTADO OPERATIVO</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>PAÍS DE ORIGEN</label>
               <select
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: form.status === 'ACTIVO' ? '#22c55e' : '#ef4444', fontWeight: 900, fontSize: '0.75rem' }}
+                value={form.origin_country}
+                onChange={(e) => setForm({ ...form, origin_country: e.target.value })}
+                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.75rem' }}
               >
-                <option value="ACTIVO">ACTIVO</option>
-                <option value="INACTIVO">INACTIVO</option>
+                <option value="GUATEMALA">🇬🇹 GUATEMALA (INTERNACIONAL)</option>
+                <option value="MÉXICO">🇲🇽 MÉXICO (NACIONAL)</option>
+                <option value="OTRO">🌐 OTRO PAÍS</option>
               </select>
             </div>
           </div>
@@ -3414,10 +3579,111 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
               type="text"
               value={form.specialty}
               onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-              placeholder={isFabric ? 'Gabardina 8.5oz, Mezclilla 14oz, Piqué peinado...' : isTrim ? 'Cierres Latón, Botones Pasta, Elásticos...' : 'Polo, Pantalón Casual, Camisería...'}
+              placeholder={isFabric ? 'Gabardina Isabel, Hawa Elastano, Warp Pique, Cuadros, Rayas...' : isTrim ? 'Cierres Latón, Botones Pasta, Elásticos...' : 'Polo, Pantalón Casual, Camisería...'}
               style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
             />
           </div>
+
+          {/* Lead Times Textiles Separados por Tipología */}
+          {isFabric && (
+            <div style={{ background: 'rgba(14, 165, 233, 0.05)', border: '1px solid rgba(14, 165, 233, 0.25)', borderRadius: '0.85rem', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                ⏱ TIEMPOS DE ENTREGA TEXTIL (LEAD TIMES DIFERENCIADOS POR COMPORTAMIENTO)
+              </span>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#22c55e', display: 'block', marginBottom: '0.2rem' }}>
+                    🟢 LISOS DESDE CRUDO (DÍAS)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.lead_time_liso_days}
+                    onChange={(e) => setForm({ ...form, lead_time_liso_days: e.target.value })}
+                    placeholder="18"
+                    style={{ width: '100%', background: '#020617', border: '1px solid rgba(34, 197, 94, 0.4)', borderRadius: '0.5rem', padding: '0.5rem', color: '#22c55e', fontWeight: 900, fontSize: '0.75rem', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '0.55rem', color: '#64748b' }}>Teñido + Tránsito</span>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#f59e0b', display: 'block', marginBottom: '0.2rem' }}>
+                    🟡 FANTASÍAS MTO (DÍAS)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.lead_time_fantasia_days}
+                    onChange={(e) => setForm({ ...form, lead_time_fantasia_days: e.target.value })}
+                    placeholder="55"
+                    style={{ width: '100%', background: '#020617', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '0.5rem', padding: '0.5rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.75rem', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '0.55rem', color: '#64748b' }}>Hilado + Tejido + Acabado</span>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#c084fc', display: 'block', marginBottom: '0.2rem' }}>
+                    🟣 POST "SALIDA TEJIDO" (DÍAS)
+                  </label>
+                  <input
+                    type="number"
+                    value={form.lead_time_post_weaving_days}
+                    onChange={(e) => setForm({ ...form, lead_time_post_weaving_days: e.target.value })}
+                    placeholder="14"
+                    style={{ width: '100%', background: '#020617', border: '1px solid rgba(192, 132, 252, 0.4)', borderRadius: '0.5rem', padding: '0.5rem', color: '#c084fc', fontWeight: 900, fontSize: '0.75rem', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '0.55rem', color: '#64748b' }}>Acabado + Aduana + Tránsito</span>
+                </div>
+              </div>
+
+              {/* Loom Capacity */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>CAPACIDAD TELARES (MTS/MES)</label>
+                  <input
+                    type="number"
+                    value={form.mill_loom_monthly_capacity}
+                    onChange={(e) => setForm({ ...form, mill_loom_monthly_capacity: e.target.value })}
+                    placeholder="80000"
+                    style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.75rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>TIEMPO TRASLADO LOGÍSTICO (DÍAS)</label>
+                  <input
+                    type="number"
+                    value={form.logistics_days}
+                    onChange={(e) => setForm({ ...form, logistics_days: e.target.value })}
+                    style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.75rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isFabric && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', display: 'block', marginBottom: '0.3rem' }}>
+                  {isTrim ? 'LEAD TIME DESPACHO/PRODUCCIÓN (DÍAS)' : 'LEAD TIME CONFECCIÓN (DÍAS)'}
+                </label>
+                <input
+                  type="number"
+                  value={form.lead_time_days}
+                  onChange={(e) => setForm({ ...form, lead_time_days: e.target.value })}
+                  style={{ width: '100%', background: '#020617', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.8rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#38bdf8', display: 'block', marginBottom: '0.3rem' }}>TIEMPO TRASLADO LOGÍSTICO (DÍAS)</label>
+                <input
+                  type="number"
+                  value={form.logistics_days}
+                  onChange={(e) => setForm({ ...form, logistics_days: e.target.value })}
+                  style={{ width: '100%', background: '#020617', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.8rem' }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Contact Details Grid */}
           <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.85rem', borderRadius: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -3439,7 +3705,7 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
                   type="text"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="55-1234-5678"
+                  placeholder="+502 / 55-1234-5678"
                   style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '0.5rem', padding: '0.5rem', color: 'white', fontSize: '0.7rem' }}
                 />
               </div>
@@ -3466,58 +3732,13 @@ function SupplierEditorModal({ modalState, onClose, onSave, loading }) {
             </div>
           </div>
 
-          {/* Lead Times & Capacities */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', display: 'block', marginBottom: '0.3rem' }}>
-                {isFabric || isTrim ? 'LEAD TIME DESPACHO/PRODUCCIÓN (DÍAS)' : 'LEAD TIME CONFECCIÓN (DÍAS)'}
-              </label>
-              <input
-                type="number"
-                value={form.lead_time_days}
-                onChange={(e) => setForm({ ...form, lead_time_days: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#f59e0b', fontWeight: 900, fontSize: '0.8rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#38bdf8', display: 'block', marginBottom: '0.3rem' }}>TIEMPO TRASLADO LOGÍSTICO (DÍAS)</label>
-              <input
-                type="number"
-                value={form.logistics_days}
-                onChange={(e) => setForm({ ...form, logistics_days: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: '0.75rem', padding: '0.65rem', color: '#38bdf8', fontWeight: 900, fontSize: '0.8rem' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD SEMANAL ({isFabric ? 'MTS' : 'PZAS'})</label>
-              <input
-                type="number"
-                value={form.weekly_capacity}
-                onChange={(e) => setForm({ ...form, weekly_capacity: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>CAPACIDAD DIARIA ({isFabric ? 'MTS' : 'PZAS'})</label>
-              <input
-                type="number"
-                value={form.daily_capacity}
-                onChange={(e) => setForm({ ...form, daily_capacity: e.target.value })}
-                style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem' }}
-              />
-            </div>
-          </div>
-
           <div>
             <label style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>NOTAS / CONDICIONES COMERCIALES</label>
             <textarea
               rows={2}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Condiciones de pago, mínimos de compra, especificaciones técnicas..."
+              placeholder="Condiciones de pago, mínimos de compra, especificaciones técnicas de tela..."
               style={{ width: '100%', background: '#020617', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', resize: 'vertical' }}
             />
           </div>

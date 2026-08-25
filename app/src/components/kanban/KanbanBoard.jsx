@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { db } from '../../firebase'
 import { collection, doc, updateDoc, onSnapshot, arrayUnion } from 'firebase/firestore'
 import { generateWorkOrderPDF, generateResupplyPDF } from '../../utils/kanbanPDFGenerator'
+import KanbanLeadTimeSimulatorModal from './KanbanLeadTimeSimulatorModal'
 import {
   LayoutDashboard, AlertTriangle, Clock, CheckCircle2, MessageSquarePlus,
   Truck, Scissors, Package, Layers, ShieldAlert, ArrowRight, Download,
-  Filter, Search, MessageSquare, AlertCircle, Plus
+  Filter, Search, MessageSquare, AlertCircle, Plus, Sparkles
 } from 'lucide-react'
 
 const COLUMNS = [
@@ -22,6 +23,8 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
   const [transferOrders, setTransferOrders] = useState([])
   const [thresholds, setThresholds] = useState([])
   const [erpStock, setErpStock] = useState([])
+  const [globalSafetyDays, setGlobalSafetyDays] = useState(30)
+  const [simulatorModalItem, setSimulatorModalItem] = useState(null)
 
   const [search, setSearch] = useState('')
   const [filterWh, setFilterWh] = useState('ALL')
@@ -37,6 +40,13 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
 
   // Real-time listener
   useEffect(() => {
+    const unsubGlobal = onSnapshot(doc(db, 'kanban_global_config', 'parameters'), d => {
+      if (d.exists()) {
+        const data = d.data()
+        if (data.safety_stock_days) setGlobalSafetyDays(Number(data.safety_stock_days))
+      }
+    })
+
     const unsubOps = onSnapshot(collection(db, 'kanban_production_orders'), snap => {
       const list = []
       snap.forEach(d => list.push({ id: d.id, ...d.data(), isProdOrder: true }))
@@ -62,6 +72,7 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
     })
 
     return () => {
+      unsubGlobal()
       unsubOps()
       unsubTrans()
       unsubThresh()
@@ -373,21 +384,44 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
                     >
                       {/* Top Badges: Type & Semaphore */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: '0.55rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.35rem',
-                          background: card.type === 'PRODUCCIÓN' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(14, 165, 233, 0.15)',
-                          color: card.type === 'PRODUCCIÓN' ? '#f472b6' : '#38bdf8'
-                        }}>
-                          {card.type}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <span style={{
+                            fontSize: '0.55rem', fontWeight: 900, padding: '0.15rem 0.45rem', borderRadius: '0.35rem',
+                            background: card.type === 'PRODUCCIÓN' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(14, 165, 233, 0.15)',
+                            color: card.type === 'PRODUCCIÓN' ? '#f472b6' : '#38bdf8'
+                          }}>
+                            {card.type}
+                          </span>
+                          <span style={{
+                            fontSize: '0.52rem', fontWeight: 900, padding: '0.15rem 0.35rem', borderRadius: '0.35rem',
+                            background: isFantasia ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                            color: isFantasia ? '#f59e0b' : '#22c55e'
+                          }}>
+                            {isFantasia ? 'MTO (64d)' : 'GREIGE (29d)'}
+                          </span>
+                        </div>
 
-                        {/* Semaphore Indicator */}
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.58rem', fontWeight: 900,
-                          color: sem.color, background: sem.bg, padding: '0.15rem 0.5rem', borderRadius: '999px'
-                        }}>
+                        {/* Semaphore Indicator with Interactive Lead Time Simulator Click */}
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSimulatorModalItem({
+                              ...card,
+                              safety_stock_days: globalSafetyDays,
+                              warehouse_dest: card.warehouse_dest || 'MEXICO',
+                              comportamiento_tela: isFantasia ? 'FANTASIA' : 'LISO'
+                            })
+                          }}
+                          title="Clic para auditar Cumulative Lead Time y ROP"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.58rem', fontWeight: 900,
+                            color: sem.color, background: sem.bg, padding: '0.15rem 0.5rem', borderRadius: '999px',
+                            cursor: 'pointer', border: '1px solid rgba(255,255,255,0.06)'
+                          }}
+                        >
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sem.color }} />
                           <span>{sem.label}</span>
+                          <Clock size={10} style={{ marginLeft: '0.2rem', opacity: 0.8 }} />
                         </div>
                       </div>
 
@@ -415,9 +449,9 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
                         )}
                       </div>
 
-                      {/* ERP References if captured */}
-                      {(card.erp_op_number || card.erp_sm_number) && (
-                        <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.58rem' }}>
+                      {/* ERP References & Fabric Milestone if captured */}
+                      {(card.erp_op_number || card.erp_sm_number || card.fabric_milestone) && (
+                        <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.58rem', flexWrap: 'wrap' }}>
                           {card.erp_op_number && (
                             <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', padding: '0.1rem 0.35rem', borderRadius: '0.3rem', fontWeight: 800 }}>
                               OP: {card.erp_op_number}
@@ -426,6 +460,11 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
                           {card.erp_sm_number && (
                             <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', padding: '0.1rem 0.35rem', borderRadius: '0.3rem', fontWeight: 800 }}>
                               SM: {card.erp_sm_number}
+                            </span>
+                          )}
+                          {card.fabric_milestone === 'SALIDA_DE_TEJIDO' && (
+                            <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', border: '1px solid rgba(192, 132, 252, 0.35)', padding: '0.1rem 0.4rem', borderRadius: '0.3rem', fontWeight: 900 }}>
+                              ⭐ HITO GUATEMALA: SALIDA TEJIDO
                             </span>
                           )}
                         </div>
@@ -627,6 +666,15 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
             </div>
           </div>
         </div>
+      )}
+
+      {/* Simulador de Cumulative Lead Time & ROP Dinámico */}
+      {simulatorModalItem && (
+        <KanbanLeadTimeSimulatorModal
+          item={simulatorModalItem}
+          globalSafetyDays={globalSafetyDays}
+          onClose={() => setSimulatorModalItem(null)}
+        />
       )}
     </div>
   )

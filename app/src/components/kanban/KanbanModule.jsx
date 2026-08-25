@@ -5,16 +5,17 @@ import { useAuth } from '../../context/AuthContext'
 import KanbanBoard from './KanbanBoard'
 import KanbanResupply from './KanbanResupply'
 import KanbanProduction from './KanbanProduction'
+import KanbanDemandPlanning from './KanbanDemandPlanning'
 import KanbanPlanningInbox from './KanbanPlanningInbox'
 import KanbanMasterConfig from './KanbanMasterConfig'
 import {
-  LayoutDashboard, Package, Scissors, Inbox, Settings,
+  LayoutDashboard, Package, Scissors, TrendingUp, Inbox, Settings,
   AlertCircle, ShieldCheck, Eye, Sparkles
 } from 'lucide-react'
 
 export default function KanbanModule() {
   const { user, profile, isAdmin, hasPermission, activeWarehouse } = useAuth()
-  const [activeTab, setActiveTab] = useState('board') // 'board' | 'resupply' | 'production' | 'inbox' | 'config'
+  const [activeTab, setActiveTab] = useState('board') // 'board' | 'resupply' | 'production' | 'demand' | 'inbox' | 'config'
   const [message, setMessage] = useState(null)
   const [pendingInboxCount, setPendingInboxCount] = useState(0)
 
@@ -45,8 +46,9 @@ export default function KanbanModule() {
     { id: 'board', label: '1. MONITOR KANBAN', icon: <LayoutDashboard size={17} /> },
     { id: 'resupply', label: '2. REABASTECIMIENTO', icon: <Package size={17} /> },
     { id: 'production', label: '3. PRODUCCIÓN & EXPLOSIÓN BOM', icon: <Scissors size={17} /> },
-    { id: 'inbox', label: '4. BUZÓN DE PLANEACIÓN', icon: <Inbox size={17} />, badge: pendingInboxCount },
-    { id: 'config', label: '5. CONFIGURACIÓN MAESTRA', icon: <Settings size={17} /> },
+    { id: 'demand', label: '4. PLANEACIÓN DE DEMANDA (FORECAST)', icon: <TrendingUp size={17} /> },
+    { id: 'inbox', label: '5. BUZÓN DE PLANEACIÓN', icon: <Inbox size={17} />, badge: pendingInboxCount },
+    { id: 'config', label: '6. CONFIGURACIÓN MAESTRA', icon: <Settings size={17} /> },
   ]
 
   return (
@@ -223,6 +225,13 @@ export default function KanbanModule() {
           <KanbanProduction
             canEdit={canEdit}
             userEmail={user?.email || profile?.name}
+            showMessage={showMessage}
+          />
+        )}
+
+        {activeTab === 'demand' && (
+          <KanbanDemandPlanning
+            canEdit={canEdit}
             showMessage={showMessage}
           />
         )}
