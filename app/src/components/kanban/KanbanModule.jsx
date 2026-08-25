@@ -205,52 +205,116 @@ export default function KanbanModule() {
 
       {/* Tab Content Display */}
       <div style={{ minHeight: '600px' }}>
-        {activeTab === 'board' && (
-          <KanbanBoard
-            canEdit={canEdit}
-            userEmail={user?.email || profile?.name}
-            showMessage={showMessage}
-          />
-        )}
+        <KanbanErrorBoundary onReset={() => setActiveTab('board')}>
+          {activeTab === 'board' && (
+            <KanbanBoard
+              canEdit={canEdit}
+              userEmail={user?.email || profile?.name}
+              showMessage={showMessage}
+            />
+          )}
 
-        {activeTab === 'resupply' && (
-          <KanbanResupply
-            canEdit={canEdit}
-            userEmail={user?.email || profile?.name}
-            showMessage={showMessage}
-          />
-        )}
+          {activeTab === 'resupply' && (
+            <KanbanResupply
+              canEdit={canEdit}
+              userEmail={user?.email || profile?.name}
+              showMessage={showMessage}
+            />
+          )}
 
-        {activeTab === 'production' && (
-          <KanbanProduction
-            canEdit={canEdit}
-            userEmail={user?.email || profile?.name}
-            showMessage={showMessage}
-          />
-        )}
+          {activeTab === 'production' && (
+            <KanbanProduction
+              canEdit={canEdit}
+              userEmail={user?.email || profile?.name}
+              showMessage={showMessage}
+            />
+          )}
 
-        {activeTab === 'demand' && (
-          <KanbanDemandPlanning
-            canEdit={canEdit}
-            showMessage={showMessage}
-          />
-        )}
+          {activeTab === 'demand' && (
+            <KanbanDemandPlanning
+              canEdit={canEdit}
+              showMessage={showMessage}
+            />
+          )}
 
-        {activeTab === 'inbox' && (
-          <KanbanPlanningInbox
-            canAuthorize={canAuthorize}
-            userEmail={user?.email || profile?.name}
-            showMessage={showMessage}
-          />
-        )}
+          {activeTab === 'inbox' && (
+            <KanbanPlanningInbox
+              canAuthorize={canAuthorize}
+              userEmail={user?.email || profile?.name}
+              showMessage={showMessage}
+            />
+          )}
 
-        {activeTab === 'config' && (
-          <KanbanMasterConfig
-            canEdit={canEdit}
-            showMessage={showMessage}
-          />
-        )}
+          {activeTab === 'config' && (
+            <KanbanMasterConfig
+              canEdit={canEdit}
+              showMessage={showMessage}
+            />
+          )}
+        </KanbanErrorBoundary>
       </div>
     </div>
   )
+}
+
+class KanbanErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, error: null, errorInfo: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Kanban ErrorBoundary caught:', error, errorInfo)
+    this.setState({ errorInfo })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '3rem 2rem',
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '1.5rem',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <AlertCircle size={44} color="#ef4444" />
+          <h3 style={{ color: 'white', fontSize: '1.2rem', fontWeight: 900, textTransform: 'uppercase' }}>
+            SE PRODUJO UN ERROR EN ESTA VISTA DE KANBAN
+          </h3>
+          <p style={{ color: '#fca5a5', fontSize: '0.75rem', maxWidth: '600px', lineHeight: 1.5 }}>
+            {this.state.error?.message || 'Error inesperado durante el renderizado del componente.'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null, errorInfo: null })
+              if (this.props.onReset) this.props.onReset()
+            }}
+            style={{
+              background: '#0284c7',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.75rem',
+              padding: '0.75rem 1.5rem',
+              fontWeight: 900,
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              marginTop: '0.5rem'
+            }}
+          >
+            REINICIAR VISTA KANBAN
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }

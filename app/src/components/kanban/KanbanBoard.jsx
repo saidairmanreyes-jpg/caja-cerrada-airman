@@ -358,6 +358,8 @@ export default function KanbanBoard({ canEdit = true, userEmail = '', showMessag
               {/* Column Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flex: 1 }}>
                 {colCards.map(card => {
+                  const isFantasia = card.comportamiento_tela === 'FANTASIA' ||
+                    ['CUADRO', 'MICRO CUADRO', 'RAYA', 'MICRO RAYA', 'MEZCLILLA', 'DENIM'].some(k => (card.fabric_name || card.description || card.code || '').toUpperCase().includes(k))
                   const sem = calculateSemaphore(card)
                   const hasDelays = sem.status === 'YELLOW' || sem.status === 'RED'
                   const lastDelay = card.last_delay_note || (card.delay_comments?.length > 0 ? card.delay_comments[card.delay_comments.length - 1].text : null)

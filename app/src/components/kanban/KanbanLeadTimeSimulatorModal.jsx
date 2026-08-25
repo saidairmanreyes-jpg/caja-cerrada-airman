@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Clock, ShieldAlert, Sparkles, X, ChevronRight, Truck,
   Scissors, Factory, Globe, ArrowRight, Layers, CheckCircle2,
@@ -14,27 +14,37 @@ import {
  * y el cálculo exacto del Punto de Reorden por Días de Cobertura.
  */
 export default function KanbanLeadTimeSimulatorModal({ item, onClose, globalSafetyDays = 30 }) {
-  if (!item) return null
+  // 1. Safe extraction of item attributes
+  const safeItem = item || {}
+  const isFantasia = safeItem.comportamiento_tela === 'FANTASIA' ||
+    ['CUADRO', 'MICRO CUADRO', 'RAYA', 'MICRO RAYA', 'MEZCLILLA', 'DENIM'].some(k => (safeItem.fabric_name || safeItem.description || safeItem.code || '').toUpperCase().includes(k))
 
-  // 1. Determine Fabric Genealogy (Genealogía de SKU)
-  const isFantasia = item.comportamiento_tela === 'FANTASIA' ||
-    ['CUADRO', 'MICRO CUADRO', 'RAYA', 'MICRO RAYA', 'MEZCLILLA', 'DENIM'].some(k => (item.fabric_name || item.description || item.code || '').toUpperCase().includes(k))
+  const fabricCode = safeItem.fabric_code || (isFantasia ? 'TEL-FAN-CUA' : 'TEL-GAB-ISA')
+  const fabricName = safeItem.fabric_name || (isFantasia ? 'TELA FANTASÍA MAKE-TO-ORDER (CUADROS/RAYAS/MEZCLILLA)' : 'GABARDINA ISABEL (BASE CRUDA TEÑIBLE)')
+  const receivingPlant = safeItem.receiving_plant || (safeItem.warehouse_dest === 'MONTERREY' ? 'HACIENDA (AGS)' : 'PLANTA (TEH)')
 
-  const genealogyType = isFantasia ? 'BASE_FANTASIA_MTO' : 'BASE_CRUDA_TEÑIBLE'
-  const fabricCode = item.fabric_code || (isFantasia ? 'TEL-FAN-CUA' : 'TEL-GAB-ISA')
-  const fabricName = item.fabric_name || (isFantasia ? 'TELA FANTASÍA MAKE-TO-ORDER (CUADROS/RAYAS/MEZCLILLA)' : 'GABARDINA ISABEL (BASE CRUDA TEÑIBLE)')
-  const receivingPlant = item.receiving_plant || (item.warehouse_dest === 'MONTERREY' ? 'HACIENDA (AGS)' : 'PLANTA (TEH)')
-
-  // 2. Lead Time Breakdown Variables
+  // 2. Lead Time Breakdown Variables (unconditional hooks)
   const [tTeñidoTejido, setTTeñidoTejido] = useState(isFantasia ? 50 : 15)
   const [tFleteGuatemala, setTFleteGuatemala] = useState(4)
   const [tMaquilaConfeccion, setTMaquilaConfeccion] = useState(8)
   const [tFleteSucursal, setTFleteSucursal] = useState(2)
 
-  // 3. Demand and Safety Stock Variables
-  const initialMonthlyDemand = Number(item.monthly_consumption || item.avg_monthly_demand || 150)
+  // 3. Demand and Safety Stock Variables (unconditional hooks)
+  const initialMonthlyDemand = Number(safeItem.monthly_consumption || safeItem.avg_monthly_demand || 150)
   const [monthlyDemand, setMonthlyDemand] = useState(initialMonthlyDemand)
-  const [safetyDays, setSafetyDays] = useState(Number(item.safety_stock_days || globalSafetyDays || 30))
+  const [safetyDays, setSafetyDays] = useState(Number(safeItem.safety_stock_days || globalSafetyDays || 30))
+
+  useEffect(() => {
+    if (item) {
+      const isFan = item.comportamiento_tela === 'FANTASIA' ||
+        ['CUADRO', 'MICRO CUADRO', 'RAYA', 'MICRO RAYA', 'MEZCLILLA', 'DENIM'].some(k => (item.fabric_name || item.description || item.code || '').toUpperCase().includes(k))
+      setTTeñidoTejido(isFan ? 50 : 15)
+      setMonthlyDemand(Number(item.monthly_consumption || item.avg_monthly_demand || 150))
+      setSafetyDays(Number(item.safety_stock_days || globalSafetyDays || 30))
+    }
+  }, [item, globalSafetyDays])
+
+  if (!item) return null
 
   // 4. Mathematical Calculations
   const cumulativeLeadTime = Number(tTeñidoTejido) + Number(tFleteGuatemala) + Number(tMaquilaConfeccion) + Number(tFleteSucursal)
