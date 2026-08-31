@@ -3,14 +3,11 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import * as XLSX from 'xlsx'
 import { Box, Plus, Search, Download, Upload, Edit3, Trash2, Check, X, HelpCircle } from 'lucide-react'
-
-const TALLAS = [
-  'XC', 'CH', 'M', 'G', 'XG', '2X', '3X', '4X', '5X',
-  '28', '30', '32', '34', '36', '38', '40', '42', '44',
-  '3', '5', '7', '9', '11', '13', '15', '17',
-  '14.5', '15', '15.5', '16', '16.5', '17', '17.5', '18',
-  '28-30', '32-34', '36-38', '40-42', '44-46', 'UN'
-]
+import {
+  CURVA_SUPERIORES,
+  CURVA_PANTALON_CABALLERO,
+  CURVA_PANTALON_DAMA
+} from '../utils/sizeCurves'
 
 const inputStyle = {
   background: 'rgba(15,23,42,0.6)',
@@ -334,7 +331,15 @@ export default function StandardsManager() {
               <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Talla</label>
               <select value={form.talla} onChange={e => setForm({ ...form, talla: e.target.value })}
                 style={{ ...inputStyle, background: '#0f172a' }}>
-                {TALLAS.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                <optgroup label="── SUPERIORES (Dama & Caballero) ──" style={{ color: '#a78bfa', background: '#0f172a' }}>
+                  {CURVA_SUPERIORES.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
+                <optgroup label="── PANTALÓN CABALLERO ──" style={{ color: '#38bdf8', background: '#0f172a' }}>
+                  {CURVA_PANTALON_CABALLERO.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
+                <optgroup label="── PANTALÓN DAMA ──" style={{ color: '#f472b6', background: '#0f172a' }}>
+                  {CURVA_PANTALON_DAMA.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
               </select>
             </div>
 

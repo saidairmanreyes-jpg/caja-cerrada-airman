@@ -3,12 +3,15 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { QRCodeSVG } from 'qrcode.react'
 import * as XLSX from 'xlsx'
+import {
+  CURVA_SUPERIORES,
+  CURVA_PANTALON_CABALLERO,
+  CURVA_PANTALON_DAMA
+} from '../utils/sizeCurves'
 
-// ─── CONSTANTES ──────────────────────────────────────────────────────────────
-
-const TALLAS = ['XC', 'CH', 'MD', 'GD', 'XG', 'XX', '3X', '4X', '5X']
 
 const MAQUILAS_LIST = ['HACIENDA', 'OTRA MAQUILA']
+
 
 const inputStyle = {
   background: 'rgba(15,23,42,0.7)',
@@ -378,7 +381,15 @@ function MaquilaStandards() {
               <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Talla</label>
               <select value={form.talla} onChange={e => setForm({ ...form, talla: e.target.value })}
                 style={{ ...inputStyle, background: '#0f172a' }}>
-                {TALLAS.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                <optgroup label="── SUPERIORES (Dama & Caballero) ──" style={{ color: '#a78bfa', background: '#0f172a' }}>
+                  {CURVA_SUPERIORES.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
+                <optgroup label="── PANTALÓN CABALLERO ──" style={{ color: '#38bdf8', background: '#0f172a' }}>
+                  {CURVA_PANTALON_CABALLERO.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
+                <optgroup label="── PANTALÓN DAMA ──" style={{ color: '#f472b6', background: '#0f172a' }}>
+                  {CURVA_PANTALON_DAMA.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                </optgroup>
               </select>
             </div>
 
@@ -732,7 +743,15 @@ function MaquilaLabelCapture() {
                   {/* Talla */}
                   <select value={line.talla} onChange={e => updateLine(line.id, 'talla', e.target.value)}
                     style={{ ...inputStyle, background: '#0f172a', padding: '0.6rem 0.875rem' }}>
-                    {TALLAS.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                    <optgroup label="── SUPERIORES ──" style={{ color: '#a78bfa', background: '#0f172a' }}>
+                      {CURVA_SUPERIORES.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                    </optgroup>
+                    <optgroup label="── PANTALÓN CABALLERO ──" style={{ color: '#38bdf8', background: '#0f172a' }}>
+                      {CURVA_PANTALON_CABALLERO.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                    </optgroup>
+                    <optgroup label="── PANTALÓN DAMA ──" style={{ color: '#f472b6', background: '#0f172a' }}>
+                      {CURVA_PANTALON_DAMA.map(t => <option key={t} value={t} style={{ background: '#0f172a' }}>{t}</option>)}
+                    </optgroup>
                   </select>
                   {/* Cantidad */}
                   <input

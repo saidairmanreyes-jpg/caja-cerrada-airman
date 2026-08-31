@@ -1,6 +1,12 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import JSZip from 'jszip'
+import {
+  CURVA_SUPERIORES,
+  CURVA_PANTALON_CABALLERO,
+  CURVA_PANTALON_DAMA,
+  getSizeRunFromTalla
+} from './sizeCurves'
 
 /**
  * Genera la instancia jsPDF de la Hoja de Reabastecimiento / Surtido (Picking).
@@ -499,20 +505,12 @@ export function generateWorkOrderPDF(order, bomBreakdown = [], supplier = null, 
   doc.setTextColor(15, 23, 42)
   doc.text('1. MATRIZ LINEAL DE TALLAS Y ESTÁNDAR DE EMPAQUE (CORRIDA HORIZONTAL)', 14, 82)
 
-  // Determine standard size run
+  // Determine standard size run using centralized curves
   let sizeRun = []
   const g = String(order?.gender || '').toUpperCase()
   const currentTalla = String(order?.talla || '').toUpperCase()
 
-  if (g.includes('DAMA') || g.includes('MUJER')) {
-    sizeRun = ['3', '5', '7', '9', '11', '13', '15', '17']
-  } else if (['28', '30', '32', '34', '36', '38', '40', '42', '44'].includes(currentTalla)) {
-    sizeRun = ['28', '30', '32', '34', '36', '38', '40', '42', '44']
-  } else if (['XC', 'CH', 'M', 'G', 'XG', '2X', '3X', '4X', '5X'].includes(currentTalla)) {
-    sizeRun = ['XC', 'CH', 'M', 'G', 'XG', '2X', '3X', '4X', '5X']
-  } else {
-    sizeRun = ['28', '30', '32', '34', '36', '38', '40', '42', '44']
-  }
+  sizeRun = getSizeRunFromTalla(currentTalla, g)
 
   if (currentTalla && !sizeRun.includes(currentTalla)) {
     sizeRun.push(currentTalla)

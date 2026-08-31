@@ -9,6 +9,11 @@ import {
   ShieldAlert, Sparkles, Sliders, Grid, Copy, HelpCircle, Tag, CheckCircle2,
   Clock, Database, Warehouse, DollarSign, Filter, CheckCircle, BarChart3
 } from 'lucide-react'
+import {
+  CURVA_SUPERIORES,
+  CURVA_PANTALON_CABALLERO,
+  CURVA_PANTALON_DAMA
+} from '../../utils/sizeCurves'
 
 const WAREHOUSES = ['MATRIZ', 'PLANTA', 'MEXICO', 'MONTERREY']
 
@@ -92,29 +97,19 @@ export const RAW_MATERIALS_CATALOG = [
 // Presets de curvas de tallas según género y categoría
 export const SIZE_PRESETS = {
   PANTALON_CABALLERO: {
-    label: 'Pantalón Caballero (28 al 44)',
+    label: 'Pantalón Caballero (28 al 50)',
     gender: 'CABALLERO',
-    sizes: ['28', '30', '32', '34', '36', '38', '40', '42', '44']
+    sizes: [...CURVA_PANTALON_CABALLERO]
   },
-  PANTALON_DAMA_IMPAR: {
-    label: 'Pantalón Dama Impar (3 al 17)',
+  PANTALON_DAMA: {
+    label: 'Pantalón Dama (00 al 23)',
     gender: 'DAMA',
-    sizes: ['3', '5', '7', '9', '11', '13', '15', '17']
-  },
-  PANTALON_DAMA_PAR: {
-    label: 'Pantalón Dama Par (24 al 36)',
-    gender: 'DAMA',
-    sizes: ['24', '26', '28', '30', '32', '34', '36']
+    sizes: [...CURVA_PANTALON_DAMA]
   },
   ALFANUMERICA_COMPLETA: {
     label: 'Alfanumérica Completa (XC a 5X)',
     gender: 'UNISEX',
-    sizes: ['XC', 'CH', 'M', 'G', 'XG', '2X', '3X', '4X', '5X']
-  },
-  ALFANUMERICA_ESTANDAR: {
-    label: 'Alfanumérica Estándar (CH a XG)',
-    gender: 'UNISEX',
-    sizes: ['CH', 'M', 'G', 'XG']
+    sizes: [...CURVA_SUPERIORES]
   }
 }
 
@@ -2868,7 +2863,7 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
                 setForm(prev => ({ ...prev, gender: newGender }))
                 if (form.category === 'PANTALONES') {
                   if (newGender === 'CABALLERO') handleApplyPreset('PANTALON_CABALLERO')
-                  else if (newGender === 'DAMA') handleApplyPreset('PANTALON_DAMA_IMPAR')
+                  else if (newGender === 'DAMA') handleApplyPreset('PANTALON_DAMA')
                 }
               }}
               style={{ width: '100%', background: '#020617', border: '1px solid #ec4899', borderRadius: '0.75rem', padding: '0.65rem', color: 'white', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' }}
@@ -2920,21 +2915,21 @@ function BomMatrixEditorModal({ modalState, onClose, onSave, loading }) {
                 onClick={() => handleApplyPreset('PANTALON_CABALLERO')}
                 style={{ background: form.gender === 'CABALLERO' && form.category === 'PANTALONES' ? 'rgba(14, 165, 233, 0.25)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(14, 165, 233, 0.4)', color: '#38bdf8', padding: '0.3rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer' }}
               >
-                Pantalón Cab. (28-44)
+                Pantalón Cab. (28-50)
               </button>
               <button
                 type="button"
-                onClick={() => handleApplyPreset('PANTALON_DAMA_IMPAR')}
+                onClick={() => handleApplyPreset('PANTALON_DAMA')}
                 style={{ background: form.gender === 'DAMA' ? 'rgba(236, 72, 153, 0.25)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(236, 72, 153, 0.4)', color: '#f472b6', padding: '0.3rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer' }}
               >
-                Pantalón Dama (3-17)
+                Pantalón Dama (00-23)
               </button>
               <button
                 type="button"
                 onClick={() => handleApplyPreset('ALFANUMERICA_COMPLETA')}
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '0.3rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer' }}
               >
-                Alfanumérica (XC-5X)
+                Superiores (XC-5X)
               </button>
             </div>
           </div>
