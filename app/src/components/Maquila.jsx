@@ -625,7 +625,7 @@ function MaquilaCapture() {
       setTelaLines([{ id: Date.now() + 1, catalog_id: '', quantity: '' }])
       setAvioLines([{ id: Date.now() + 2, catalog_id: '', quantity: '' }])
       setEditingOp(null)
-      fetchNotifications()
+      // El buzón se actualiza automáticamente vía suscripción realtime de Supabase
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (err) {
       alert("Error al procesar el guardado: " + err.message)

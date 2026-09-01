@@ -512,7 +512,7 @@ function MaquilaLabelCapture() {
   const [labelsForPrint, setLabelsForPrint] = useState([]) // final label data
 
   function newLine() {
-    return { id: Date.now() + Math.random(), code: '', description: '', descMaquila: '', talla: TALLAS[0], qty: '' }
+    return { id: Date.now() + Math.random(), code: '', description: '', descMaquila: '', talla: CURVA_SUPERIORES[0], qty: '' }
   }
 
   useEffect(() => {
